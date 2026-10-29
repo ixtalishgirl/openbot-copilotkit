@@ -87,6 +87,48 @@ function sameActivity(
   );
 }
 
+/**
+ * Whether the transcript still waits behind the placeholder.
+ *
+ * A channel opened from the roster waits for its whole history: the stored thread (`restoring`) and
+ * its voice chats. A channel just started from the compose screen has no history; its first message
+ * is already in hand and shows at once, not after a voice-chat request with nothing in it.
+ *
+ * Exported for its tests.
+ */
+export function historyIsLoading({
+  restoring,
+  seeded,
+  voicePending,
+  voiceWaitedOut = false,
+}: {
+  restoring: boolean;
+  seeded: boolean;
+  voicePending: boolean;
+  /** The voice chats have had their `VOICE_WAIT_MS` since the thread came in. */
+  voiceWaitedOut?: boolean;
+}): boolean {
+  return restoring || (!seeded && voicePending && !voiceWaitedOut);
+}
+
+/**
+ * How long, once the thread is in, the conversation waits for its voice chats before showing
+ * without them. A slow or failing voice service must not hold up text chat; cards that arrive after
+ * this join the transcript where they belong.
+ */
+export const VOICE_WAIT_MS = 1500;
+
+/** Whether `VOICE_WAIT_MS` has passed since `waiting` became true. Reset whenever it is false. */
+function useWaitedOut(waiting: boolean, key: string): boolean {
+  const [waitedOut, setWaitedOut] = useState<string | null>(null);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = window.setTimeout(() => setWaitedOut(key), VOICE_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [waiting, key]);
+  return waiting && waitedOut === key;
+}
+
 export function channelHistoryNotice({
   restoring,
   messageCount,
@@ -539,8 +581,24 @@ export function ChannelChat({
   useActiveBot(runtimeAgentId);
 
   const skillCommands = useSkillCommands(runtimeAgentId);
-  const historyNotice = channelHistoryNotice({
+  /*
+   * History is the snapshot, the stored thread AND the voice archive. The transcript shows none of
+   * it until all three are in, so it lands once at the bottom instead of drawing the conversation
+   * and then splicing call cards into it; the notice waits for the same moment, so it appears in
+   * the commit that shows the history rather than a render later, shrinking the view under it.
+   */
+  const voiceWaitedOut = useWaitedOut(
+    !restoring && seed === null && voiceArchive.pending,
+    channel.id,
+  );
+  const historyLoading = historyIsLoading({
     restoring,
+    seeded: seed !== null,
+    voicePending: voiceArchive.pending,
+    voiceWaitedOut,
+  });
+  const historyNotice = channelHistoryNotice({
+    restoring: historyLoading,
     messageCount: agent.messages.length,
     lastMessageAt: channel.lastMessageAt,
     historyAvailability,
@@ -1064,7 +1122,7 @@ export function ChannelChat({
              * above.
              */
             queueWhileBusy
-            restoring={restoring}
+            restoring={historyLoading}
             /*
              * The run, not the turn. Stop reaches a run through the core's abort controller, and that
              * controller does not exist until `say` has finished waiting for the runtime agent — so
