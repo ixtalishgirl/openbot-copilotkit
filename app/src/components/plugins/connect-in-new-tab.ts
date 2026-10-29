@@ -68,7 +68,7 @@ export function useConnectInNewTab() {
       }
       onReturn.current = finish;
       window.addEventListener("focus", finish, { once: true });
-    }, 1_000);
+    }, 500);
     return () => clearInterval(timer);
   }, [waiting, queryClient]);
   // Goes with whoever drew the button, and with a wait that ended some other way first.

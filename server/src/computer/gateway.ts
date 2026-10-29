@@ -1473,7 +1473,7 @@ const PAGE_FIELDS = ["title", "text"] as const;
 const SNAPSHOT_FIELDS = ["title", "elements"] as const;
 
 /** A two-step login can take two page loads and a wait for a code field; this outlasts the computer's own waits. */
-const SIGN_IN_BACKSTOP_MS = 75_000;
+const SIGN_IN_BACKSTOP_MS = 180_000;
 
 export function hostOf(url: string): string {
   try {

@@ -55,7 +55,7 @@ export function SignInForm({ requestId }: { requestId: string }) {
     refetchInterval: (query) =>
       query.state.data && FINAL_SIGN_IN.includes(query.state.data.status)
         ? false
-        : 3_000,
+        : 1_500,
   });
   const submit = useMutation(submitSignInMutationOptions(queryClient));
   const submitCode = useMutation(submitSignInCodeMutationOptions(queryClient));

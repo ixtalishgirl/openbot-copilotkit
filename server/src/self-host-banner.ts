@@ -43,20 +43,19 @@ export type SelfHostBanner = {
   shown: () => Promise<boolean>;
 };
 
-/**
- * How long a known answer is reused. A plan changes rarely and the bar is promotional, so ten
- * minutes keeps this to six entitlement reads an hour per replica while a plan bought today still
- * hides it within ten minutes.
+/** How long a known answer is reused. A plan changes rarely and the bar is promotional, so twenty
+ * minutes keeps this to three entitlement reads an hour per replica while a plan bought today still
+ * hides it within twenty minutes.
  */
-const ANSWER_TTL_MS = 10 * 60_000;
+const ANSWER_TTL_MS = 20 * 60_000;
 /** How long a failed read is held before trying again: soon enough to recover, not a hot loop. */
-const FAILURE_TTL_MS = 60_000;
+const FAILURE_TTL_MS = 120_000;
 /**
  * The longest the first page load waits for an answer nobody has yet. The SDK's own request gives
  * up at 1.5 seconds; a page should not wait that long for a promotional bar, so after this the bar
  * shows and the answer, when it lands, applies to the next load.
  */
-const COLD_WAIT_MS = 1_000;
+const COLD_WAIT_MS = 500;
 
 /**
  * Decide, per deployment, whether the self-host banner shows.

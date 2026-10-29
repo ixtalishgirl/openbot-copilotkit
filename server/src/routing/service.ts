@@ -21,7 +21,7 @@ export function defaultRoutingProfile(
   );
 }
 
-export const MAX_ROUTING_TEXT_LENGTH = 10000;
+export const MAX_ROUTING_TEXT_LENGTH = 40000;
 
 export class CoworkerRoutingInputError extends Error {
   constructor(

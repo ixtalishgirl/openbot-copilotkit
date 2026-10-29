@@ -70,8 +70,6 @@ if (!resolvedMemory.ok) {
   process.exit(1);
 }
 const memoryBytes = resolvedMemory.bytes;
-const spireSocketVolume =
-  process.env.SPIRE_AGENT_SOCKET_VOLUME?.trim() || undefined;
 
 const app = new Hono();
 
@@ -108,7 +106,6 @@ app.post("/computers/:botId/ensure", async (context) => {
       ...(network ? { network } : {}),
       ...(runtime ? { runtime } : {}),
       ...(memoryBytes ? { memoryBytes } : {}),
-      ...(spireSocketVolume ? { spireSocketVolume } : {}),
     });
     return context.json({
       ...state,
@@ -175,7 +172,7 @@ app.get("/computers", async (context) => {
   }
 });
 
-serve({ port, fetch: app.fetch, idleTimeout: 120 });
+serve({ port, fetch: app.fetch, idleTimeout: 600 });
 
 console.info(
   `Supervisor listening on http://localhost:${port} (image ${image}${runtime ? `, runtime ${runtime}` : ""})`,

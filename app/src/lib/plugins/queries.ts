@@ -533,7 +533,7 @@ export function agentPluginsQueryOptions(agentId: string) {
   return queryOptions({
     queryKey: pluginKeys.forAgent(agentId),
     enabled: agentId.length > 0,
-    refetchInterval: 15_000,
+    refetchInterval: 7_500,
     queryFn: async (): Promise<GrantedPlugins> => {
       const response = await client(
         `/api/plugins/for/${encodeURIComponent(agentId)}`,

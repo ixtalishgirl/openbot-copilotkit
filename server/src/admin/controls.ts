@@ -62,7 +62,7 @@ import {
 import type { WebBotAuth } from "../web-bot-auth";
 
 /** Action Recording keeps 90 days, as Grok Bot's does. */
-export const ACTION_RECORD_RETENTION_DAYS = 90;
+export const ACTION_RECORD_RETENTION_DAYS = 365;
 
 type Snapshot = {
   rows: CapabilityRow[];
@@ -603,8 +603,8 @@ export async function installEnterpriseControls(
     });
 
   const timers = [
-    setInterval(() => void refresh(), 60_000),
-    setInterval(() => void pushNetworkPolicies(), 30_000),
+    setInterval(() => void refresh(), 30_000),
+    setInterval(() => void pushNetworkPolicies(), 10_000),
     setInterval(() => {
       void terminateInactiveComputers().catch((error) =>
         console.error(

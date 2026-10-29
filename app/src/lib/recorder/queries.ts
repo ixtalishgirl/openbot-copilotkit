@@ -38,11 +38,11 @@ export const recorderConnectionsQueryOptions = (options?: {
           fallback: "Couldn't load your connected browsers.",
         })
       ).json(),
-    refetchInterval: options?.awaiting ? 2000 : false,
+    refetchInterval: options?.awaiting ? 500 : false,
   });
 
 /** How often the Browser button asks while a connect waits for the person to confirm it in the Recorder's own tab. */
-const AWAITING_POLL_MS = 2000;
+const AWAITING_POLL_MS = 500;
 
 /**
  * How often the Browser button asks the Recorder in this browser, from its last answer: every second while it records,
@@ -86,7 +86,7 @@ export const recorderHereQueryOptions = (
   });
 
 /** How often a page waiting on the Recorder's Connect page asks where its connect has got to. */
-const CONNECT_WAIT_POLL_MS = 1000;
+const CONNECT_WAIT_POLL_MS = 500;
 
 /**
  * Where the connect this page started at `since` has got to on the Recorder `id`'s Connect page (`askConnectWait`):

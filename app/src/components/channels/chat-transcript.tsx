@@ -433,8 +433,8 @@ function ScrollNewestQueuedIntoView({ newest }: { newest: string | null }) {
  * Twelve at 40ms is 440ms of cascade before the last one starts. Past roughly half a second this
  * stops reading as settling and starts reading as waiting.
  */
-const FIRST_PAINT_STAGGER_COUNT = 12;
-const FIRST_PAINT_STAGGER_SECONDS = 0.04;
+const FIRST_PAINT_STAGGER_COUNT = 8;
+const FIRST_PAINT_STAGGER_SECONDS = 0.02;
 
 /**
  * Decide, once per message, whether it waits its turn.
@@ -1550,7 +1550,7 @@ function assertNever(_item: never): null {
   return null;
 }
 
-const SEND_SCROLL_MS = 700;
+const SEND_SCROLL_MS = 400;
 
 function useSmoothSendScroll(
   viewport: React.RefObject<HTMLDivElement | null>,

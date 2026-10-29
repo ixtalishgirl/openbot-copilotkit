@@ -37,7 +37,7 @@ const statuses = new Set([
 ]);
 const sources = new Set(["model", "manual", "cloudflare", "visible-challenge"]);
 /** The longest page address a request keeps. Longer ones are not kept rather than cut. */
-export const MAX_REQUEST_URL = 2048;
+export const MAX_REQUEST_URL = 8192;
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
 const timestamp = (v: unknown): v is string =>
@@ -48,9 +48,9 @@ function validRequest(v: unknown): v is HandoffRequest {
     record(v) &&
     typeof v.id === "string" &&
     v.id.length > 0 &&
-    v.id.length <= 200 &&
+    v.id.length <= 1000 &&
     typeof v.reason === "string" &&
-    v.reason.length <= 500 &&
+    v.reason.length <= 2000 &&
     typeof v.source === "string" &&
     sources.has(v.source) &&
     typeof v.status === "string" &&
@@ -58,7 +58,7 @@ function validRequest(v: unknown): v is HandoffRequest {
     timestamp(v.createdAt) &&
     timestamp(v.updatedAt) &&
     (v.toolCallId === undefined ||
-      (typeof v.toolCallId === "string" && v.toolCallId.length <= 200)) &&
+      (typeof v.toolCallId === "string" && v.toolCallId.length <= 1000)) &&
     (v.expiresAt === undefined || timestamp(v.expiresAt)) &&
     (v.finishedAt === undefined || timestamp(v.finishedAt)) &&
     (v.interruption === undefined || typeof v.interruption === "string") &&
@@ -82,10 +82,10 @@ function validate(value: unknown): StoredControl {
     typeof value.resumeSnapshotRequired !== "boolean" ||
     typeof value.recoveryRequired !== "boolean" ||
     !Array.isArray(value.requests) ||
-    value.requests.length > 33 ||
+    value.requests.length > 1000 ||
     !value.requests.every(validRequest) ||
     !record(value.aliases) ||
-    Object.keys(value.aliases).length > 256 ||
+    Object.keys(value.aliases).length > 1024 ||
     (value.currentRequestId !== undefined &&
       typeof value.currentRequestId !== "string")
   )
@@ -96,7 +96,7 @@ function validate(value: unknown): StoredControl {
     (value.currentRequestId !== undefined &&
       !ids.has(value.currentRequestId)) ||
     Object.entries(value.aliases).some(
-      ([key, id]) => key.length > 200 || typeof id !== "string" || !ids.has(id),
+      ([key, id]) => key.length > 1000 || typeof id !== "string" || !ids.has(id),
     )
   )
     throw new Error("Corrupt computer control request history.");

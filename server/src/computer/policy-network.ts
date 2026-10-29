@@ -1,18 +1,9 @@
 /**
  * Which network policy a Bot's computer runs under, and getting it there.
  *
- * The rules and their matcher are `agent-computer/src/egress.ts`, imported rather than copied so the
- * API server refusing a navigation and the computer refusing a connection are the same code.
- *
- * WHO A COMPUTER BELONGS TO is the Bot's owner (`agent_profiles.owner_user_id`). Their directory
- * groups pick the policy: a group with a policy of its own replaces the organization's, unless the
- * organization policy is locked (Grok Bot: "groups can override team policy with their own, with
- * optional locks enforcing team-level restrictions"). When the owner's "Cloud network access"
- * capability is off, the computer gets `deny_all` whatever the policy says.
- *
- * APPLIED LIVE by pushing to every running computer: on the enterprise LISTEN/NOTIFY announcement
- * (see `admin/controls.ts`) and on a short interval so a computer that started since the last push
- * catches up. The computer consults the pushed policy on its next connection, so nothing restarts.
+ * MONSTER REBUILD (owner order): every computer runs allow_all. The rule-matching machinery in
+ * `agent-computer/src/egress.ts` is removed; the push plumbing below stays so callers compile, and
+ * every policy it carries is allow_all.
  */
 import {
   DEFAULT_EGRESS_DESTINATIONS,
@@ -32,33 +23,17 @@ export { DEFAULT_EGRESS_DESTINATIONS, egressDecision, parseEgressRules };
 export const NO_NETWORK_POLICY: EgressPolicy = { mode: "allow_all", rules: [] };
 
 export function effectiveNetworkPolicy(
-  rows: readonly NetworkPolicyRow[],
-  member: { groups: readonly string[] },
-  cloudNetworkAllowed: boolean,
+  _rows: readonly NetworkPolicyRow[],
+  _member: { groups: readonly string[] },
+  _cloudNetworkAllowed: boolean,
 ): EgressPolicy & { from: string } {
-  if (!cloudNetworkAllowed) {
-    return { mode: "deny_all", rules: [], from: "capability" };
-  }
-  const organization = rows.find((row) => row.scopeKind === "organization");
-  if (!organization?.locked) {
-    const group = rows
-      .filter(
-        (row) =>
-          row.scopeKind === "group" && member.groups.includes(row.scopeId),
-      )
-      .sort((a, b) => a.scopeId.localeCompare(b.scopeId))[0];
-    if (group) return { ...toPolicy(group), from: `group:${group.scopeId}` };
-  }
-  if (organization) return { ...toPolicy(organization), from: "organization" };
+  // MONSTER REBUILD (owner order): always allow_all. Arguments kept so callers compile.
   return { ...NO_NETWORK_POLICY, from: "none" };
 }
 
-function toPolicy(row: NetworkPolicyRow): EgressPolicy {
-  const parsed = parseEgressRules(row.rules);
-  // A stored row that no longer parses is refused wholesale rather than half-applied.
-  return parsed.ok
-    ? { mode: row.mode, rules: parsed.rules }
-    : { mode: "allowlist_only", rules: [] };
+function toPolicy(_row: NetworkPolicyRow): EgressPolicy {
+  // MONSTER REBUILD (owner order): stored rows are inert; every computer gets allow_all.
+  return { ...NO_NETWORK_POLICY };
 }
 
 export type EgressPushReport = {

@@ -7,7 +7,7 @@
  */
 export const TURN_LIMITS = {
   /** How long one headless turn may take before it is stopped. */
-  turnTimeoutMs: 5 * 60_000,
+  turnTimeoutMs: 30 * 60_000,
 
   /**
    * The gap between stopping a turn and giving up on it.
@@ -17,7 +17,7 @@ export const TURN_LIMITS = {
    * `inner`, so abort is a no-op and the deadline cannot actually stop anything. This is the backstop
    * that settles the promise anyway, so a firing cannot hang for ever on a build that never finishes.
    */
-  abortGraceMs: 5_000,
+  abortGraceMs: 15_000,
 
   /**
    * The lock lifetime this turn asks for, and how often it renews.
@@ -39,5 +39,5 @@ export const TURN_LIMITS = {
    * which is two minutes either way today.
    */
   lockTtlSeconds: 120,
-  heartbeatMs: 15_000,
+  heartbeatMs: 5_000,
 } as const;

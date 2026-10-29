@@ -25,7 +25,7 @@ export interface VoiceProvider {
 /** Only fixed, safe messages belong here: upstream bodies may contain secrets. */
 export class VoiceError extends Error {}
 
-export const MAX_VOICE_SDP_BYTES = 128 * 1024;
+export const MAX_VOICE_SDP_BYTES = 512 * 1024;
 
 export function isVoiceSdp(value: unknown): value is string {
   return (

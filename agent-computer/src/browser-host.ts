@@ -52,7 +52,7 @@ export type BrowserHostOptions = {
 const NOT_OPENED = "Your browser could not be opened. Try again.";
 
 /** How long one tab may take to say whether it is showing, before it is left out of the question. */
-const VISIBILITY_MS = 1_000;
+const VISIBILITY_MS = 250;
 
 /**
  * How long the browser has to say what it is showing before the state route answers that it is not answering.
@@ -64,13 +64,13 @@ const VISIBILITY_MS = 1_000;
  * button. Bounded well under OpenBot's own wait for this route (server/src/browser/routes.ts, STATE_TIMEOUT_MS), so the
  * person hears it from here, where it is known that the browser is open and not answering.
  */
-export const STATE_ANSWER_MS = 5_000;
+export const STATE_ANSWER_MS = 15_000;
 /**
  * How long the state waits for the Recorder's own report. Within {@link STATE_ANSWER_MS}: a Recorder still starting, or
  * busy, is left out of the answer rather than making a browser that answers look like one that does not. The page asks
  * again a second later, and a Recorder that has started by then is in that answer.
  */
-const RECORDER_REPORT_MS = 3_000;
+const RECORDER_REPORT_MS = 10_000;
 
 /** What the state route answers, for OpenBot's log, when the browser did not answer in time. */
 export const NOT_ANSWERING = `The browser did not answer within ${STATE_ANSWER_MS / 1000} s.`;
@@ -100,7 +100,7 @@ async function within<T>(
  */
 const ERROR_PAGE = "chrome-error://";
 /** How long a failed navigation waits for the tab to show its error page. */
-const ERROR_PAGE_MS = 2_000;
+const ERROR_PAGE_MS = 5_000;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

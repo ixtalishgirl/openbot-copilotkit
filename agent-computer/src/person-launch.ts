@@ -500,7 +500,7 @@ export async function forgetRecorderPins(
 }
 
 /** A host manifest is a few hundred bytes; anything far larger is not one. */
-const MAX_HOST_MANIFEST_BYTES = 64 * 1024;
+const MAX_HOST_MANIFEST_BYTES = 1024 * 1024;
 
 /**
  * Make the OpenBot profile's `NativeMessagingHosts` folder hold exactly the person's installed host

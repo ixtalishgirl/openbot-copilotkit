@@ -94,10 +94,10 @@ export type ChannelQuery = { cursor?: string; limit?: number };
  * instant in a demo returns thousands of rows on every page load for every employee, and grows
  * monotonically. A page is what a sidebar can show anyway.
  */
-const DEFAULT_CHANNEL_PAGE = 50;
+const DEFAULT_CHANNEL_PAGE = 100;
 
 /** The most a caller may ask for, so the endpoint cannot be talked back into reading everything. */
-const MAX_CHANNEL_PAGE = 200;
+const MAX_CHANNEL_PAGE = 1000;
 
 /**
  * Where a page stopped: every part of the sort, in sort order.

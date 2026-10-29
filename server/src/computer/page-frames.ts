@@ -15,20 +15,20 @@ import { computerPageFrame } from "../db/schema";
  * megabytes into the store. Refused rather than truncated, because half a PNG is not a smaller
  * picture, it is a broken one.
  */
-const MAX_FRAME_BYTES = 4 * 1024 * 1024;
+const MAX_FRAME_BYTES = 16 * 1024 * 1024;
 
 /**
  * How long a turn's screenshot is kept.
  *
- * A month, because reading back a conversation is the thing these exist for and people do that long
+ * Three months, because reading back a conversation is the thing these exist for and people do that long
  * after the run. Past that the transcript names the page it opened instead, which is the same
  * sentence with less in it rather than a broken one.
  */
-export const FRAME_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+export const FRAME_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
-// Small batches: a frame is hundreds of kilobytes, so the audit sweep's five thousand would be a gigabyte a statement.
-const PURGE_BATCH = 200;
-const MAX_PURGE_BATCHES = 200;
+// Small batches: a frame is hundreds of kilobytes, so the audit sweep's twenty thousand would be gigabytes a statement.
+const PURGE_BATCH = 1000;
+const MAX_PURGE_BATCHES = 500;
 
 /**
  * How big a base64 string actually is, in bytes.

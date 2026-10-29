@@ -256,7 +256,7 @@ export type UseAudioAmplitudeResult = {
 };
 
 const DEFAULT_SMOOTHING = 0.55;
-const DEFAULT_FFT_SIZE = 512;
+const DEFAULT_FFT_SIZE = 256;
 /** Raw RMS rarely exceeds ~0.3 for speech, so normalise into a usable 0–1. */
 const RMS_TO_UNIT = 3.2;
 /** Attack is faster than release so peaks land immediately and decay gently. */

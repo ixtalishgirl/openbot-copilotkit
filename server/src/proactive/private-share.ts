@@ -29,7 +29,7 @@ import { HeadlessToolSuspension } from "@openbot/toolkit/headless-tools";
 
 export const PRIVATE_SHARE_TOOL_REF = "openbot/share_private_information";
 export const PRIVATE_SHARE_EFFECT = "share_private";
-const ONCE_WINDOW_MS = 30 * 60_000;
+const ONCE_WINDOW_MS = 10 * 60_000;
 
 export type ShareAudience = {
   /** Where it is going. Named in the approval the person sees. */

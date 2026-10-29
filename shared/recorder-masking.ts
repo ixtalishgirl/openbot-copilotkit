@@ -27,11 +27,11 @@ type Obj = { [key: string]: JsonValue };
 /** A 3-digit security code is a secret too, so digests of values this short still match. */
 export const MIN_DIGEST_LENGTH = 3;
 /** Intelligence's per-event limit. */
-export const MAX_EVENT_BYTES = 16 * 1024;
+export const MAX_EVENT_BYTES = 64 * 1024;
 /** Intelligence refuses timestamps at or above 253,402,300,800,000. */
 export const MAX_TIMESTAMP_MS = 253_402_300_800_000 - 1;
 /** Leaves room for the seq and envelope the streamer adds to each event. */
-export const EVENT_BUDGET_BYTES = 15 * 1024;
+export const EVENT_BUDGET_BYTES = 60 * 1024;
 
 /** Copy of `shared/demonstration-rules.ts` SENSITIVE_FIELD (this file has no imports); `shared/sensitive-rule.test.ts` keeps the two equal. */
 export const SENSITIVE_FIELD =
@@ -107,7 +107,7 @@ const DIGIT_GROUPS = /(?<!\d)\d+(?:[ -]\d+)+/g;
 /** The most consecutive digit groups hashed as one digest candidate (a card written 4-4-4-4-3 is five). */
 const MAX_DIGEST_GROUPS = 6;
 /** The most digest answers one `scrubText` call remembers (see `digestMatcher`). */
-const DIGEST_MEMO_LIMIT = 4096;
+const DIGEST_MEMO_LIMIT = 16384;
 /** Where one token ends when hashing digest candidates (plan Task 3 `scrubText`). */
 const TOKEN_CHARS = /[^\s,;&=:"'{}[\]]+/g;
 /** A second, finer split for digest candidates, so a secret beside a full stop, a bracket or markup is found too ("737.",

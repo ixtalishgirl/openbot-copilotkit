@@ -47,7 +47,7 @@ export async function savedToolCall(
     }
   };
   for (let attempt = 0; !matches() && attempt < attempts; attempt++) {
-    await sleep(500);
+    await sleep(100);
     history = await read();
   }
   return {

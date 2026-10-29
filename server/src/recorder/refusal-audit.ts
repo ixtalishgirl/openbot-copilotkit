@@ -6,7 +6,7 @@ import {
 import type { RecorderRefusalSink } from "./guard";
 
 /** One row per (token digest, reason) in this window: a browser retrying a dead token must not flood the trail. */
-const WINDOW_MS = 60_000;
+const WINDOW_MS = 120_000;
 
 /** Writes recorder.bearer_refused at most once per (token digest prefix, reason) per minute on this replica. */
 export function createRecorderRefusalAudit(

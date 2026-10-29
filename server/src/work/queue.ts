@@ -85,7 +85,7 @@ export type WorkItem = {
  * no dashboard is never. At the cap it stops being claimed and stays in the table with its count and
  * its last error, which is a terminal state a person can query rather than a silence.
  */
-export const DEFAULT_MAX_ATTEMPTS = 5;
+export const DEFAULT_MAX_ATTEMPTS = 10;
 
 export type WorkQueue = {
   /**

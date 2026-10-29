@@ -475,7 +475,7 @@ export function ChannelChat({
         !cancelled && version === historyReadVersion.current;
       void (async () => {
         let sawReady = false;
-        for (const delayMs of [0, 750, 1500]) {
+        for (const delayMs of [0, 400, 800]) {
           if (delayMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, delayMs));
           }
@@ -672,7 +672,7 @@ export function ChannelChat({
       new Promise<never>((_resolve, reject) => {
         voiceHistoryTimer = setTimeout(
           () => reject(new Error("Voice history timed out")),
-          2000,
+          1200,
         );
       }),
     ])

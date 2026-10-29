@@ -52,7 +52,7 @@ function invalidateHostAccess(queryClient: QueryClient) {
 export function hostAccessQueryOptions() {
   return queryOptions({
     queryKey: hostAccessKeys.status(),
-    refetchInterval: 2_000,
+    refetchInterval: 500,
     queryFn: (): Promise<HostAccessStatus> =>
       client("/api/host-access", {
         fallback: "Folder access could not be loaded.",

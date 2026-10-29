@@ -70,7 +70,7 @@ export type BotAttention = {
   unread: number;
 };
 
-const COMPLETED_LIMIT = 25;
+const COMPLETED_LIMIT = 100;
 const clip = (text: string | null | undefined, max = 200) =>
   text ? Array.from(text).slice(0, max).join("") : null;
 const iso = (value: Date | string | null | undefined) =>

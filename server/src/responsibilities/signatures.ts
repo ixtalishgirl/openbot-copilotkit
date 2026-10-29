@@ -96,7 +96,7 @@ export function verifyPagerDutySignature(
   return matched;
 }
 
-export const STANDARD_WEBHOOK_TOLERANCE_SECONDS = 5 * 60;
+export const STANDARD_WEBHOOK_TOLERANCE_SECONDS = 15 * 60;
 export function verifyStandardWebhook(
   secret: string,
   raw: string,

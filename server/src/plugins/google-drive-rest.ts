@@ -30,7 +30,7 @@ import { MAX_RESULT_CHARS, type McpCallResult, type McpTool } from "./mcp";
  */
 
 /** Long enough for a slow listing, short enough that a Bot's turn is not held open on it. */
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 90_000;
 
 /** How many files a listing returns before the model is reading a directory rather than an answer. */
 const PAGE_SIZE = 25;

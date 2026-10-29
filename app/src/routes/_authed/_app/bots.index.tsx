@@ -7,7 +7,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 
 /** Just longer than the sheet's 200ms exit, so it has finished sliding away before the page changes. */
-const SHEET_CLOSE_MS = 240;
+const SHEET_CLOSE_MS = 120;
 
 /** Creating a Bot is a search-parameter state, so the roster stays mounted and Back closes it. */
 export const Route = createFileRoute("/_authed/_app/bots/")({

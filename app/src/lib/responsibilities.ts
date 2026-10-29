@@ -63,7 +63,7 @@ export function responsibilitiesQueryOptions() {
       client("/api/responsibilities", "responsibilities", {
         fallback: "Could not load responsibilities",
       }),
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
   });
 }
 export function responsibilityRunsQueryOptions(id: string) {
@@ -73,7 +73,7 @@ export function responsibilityRunsQueryOptions(id: string) {
       client(`/api/responsibilities/${encodeURIComponent(id)}/runs`, "runs", {
         fallback: "Could not load responsibility runs",
       }),
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
   });
 }
 export function githubBindingsQueryOptions() {

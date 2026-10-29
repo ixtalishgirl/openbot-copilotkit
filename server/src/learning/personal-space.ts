@@ -98,10 +98,10 @@ export type PersonalLearningSpaces = {
 };
 
 /** A probe answer is kept this long per container, as the Bot spaces' check kept it. */
-const CACHE_MS = 60_000;
+const CACHE_MS = 5 * 60_000;
 /** After a failed creation, the next attempt for that person waits this long, so a refusing Intelligence (or its
  * per-caller rate limit) is not asked on every popup and every capture pass. */
-const RETRY_MS = 60_000;
+const RETRY_MS = 30_000;
 
 /** Resolves with the promise's value, or with `undefined` as soon as `signal` aborts. */
 function until<T>(promise: Promise<T>, signal?: AbortSignal) {

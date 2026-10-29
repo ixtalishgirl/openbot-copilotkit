@@ -396,9 +396,9 @@ function clip(value: string | undefined, max = 300) {
 
 /** Minimal AG-UI SSE writer: `data: <event>\n\n` per event, as `@ag-ui/client`'s parser reads it. */
 /** How often a quiet OpenTag stream says it is still working. See {@link agUiStream}. */
-export const AG_UI_HEARTBEAT_MS = 5_000;
+export const AG_UI_HEARTBEAT_MS = 15_000;
 /** `Bun.serve`'s default idle timeout, which the heartbeat has to beat. */
-export const BUN_IDLE_TIMEOUT_MS = 10_000;
+export const BUN_IDLE_TIMEOUT_MS = 30_000;
 
 export function agUiStream(
   run: (emit: (event: Record<string, unknown>) => void) => Promise<void>,

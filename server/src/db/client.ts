@@ -229,7 +229,7 @@ export function createDatabase(
 
   const client = new SQL({
     ...addressOf(databaseUrl),
-    ...(options.max === undefined ? {} : { max: options.max }),
+    ...(options.max === undefined ? { max: 25 } : { max: options.max }),
   });
 
   return drizzle({ client, schema });

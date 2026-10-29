@@ -25,7 +25,7 @@ type Options = {
   onMessage: (event: { data: unknown }) => void;
   schedule?: (run: () => void, delay: number) => () => void;
 };
-const BACKOFF = [500, 1000, 2000, 4000, 8000];
+const BACKOFF = [250, 500, 1000, 2000, 4000];
 export function connectScreen(options: Options) {
   let stopped = false;
   let attempts = 0;

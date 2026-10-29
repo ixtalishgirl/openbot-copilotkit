@@ -5,7 +5,7 @@ import { readControl } from "@/lib/computers/control";
  * Poll closed screens for control/secret prompts so blocked Bots can surface outside the screen.
  */
 
-const INTERVAL_MS = 3_000;
+const INTERVAL_MS = 1_000;
 
 export function useNeedsYou(botId: string | undefined, when: boolean): boolean {
   const [needed, setNeeded] = useState(false);

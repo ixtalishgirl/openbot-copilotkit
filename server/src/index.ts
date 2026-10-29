@@ -1330,7 +1330,7 @@ const recorderExpirySweep = repeatAfterEach(async () => {
       }),
     );
   }
-}, 60_000);
+}, 15_000);
 const demonstrationStore = createDemonstrationStore(database);
 const demonstrationRecorder = createDemonstrationRecorder({
   store: demonstrationStore,
@@ -1432,7 +1432,7 @@ const memorySweep = repeatAfterEach(async () => {
       }),
     );
   }
-}, 60_000);
+}, 30_000);
 // Follow-ups a Bot schedules for itself, on the shared work queue. See agents/wake-up.ts.
 const wakeUpStore = createWakeUpStore(database, { auditStore: bootAuditStore });
 
@@ -1922,7 +1922,7 @@ const responsibilitySweep = repeatAfterEach(async () => {
       }),
     );
   }
-}, 2_000);
+}, 1_000);
 
 const approvalQueue = createWorkQueue(database);
 const approvalOwner = workOwner("approval");
@@ -2049,7 +2049,7 @@ const approvalSweep = repeatAfterEach(
     // Assigned further down, once delivery is wired.
     notify: (scope, input) => deliveryNotifications(scope, input),
   }),
-  2_000,
+  500,
 );
 const deliveryProviders = configuredDeliveryProviders(
   config.publicUrl ?? config.auth?.baseUrl ?? `http://localhost:${config.port}`,
@@ -2148,7 +2148,7 @@ const proactiveEngine = createProactiveEngine({
     buildAgentFor,
     // Only the run's own two tools and refusals: no computer, no components.
     toolsForTurn: (input) => proactiveEngine.toolsForTurn(input),
-    turnTimeoutMs: 3 * 60_000,
+    turnTimeoutMs: 10 * 60_000,
     learningContainerForThread: (input) =>
       copilotRuntime.learning?.containerForThread(input) ??
       Promise.resolve(undefined),
@@ -2203,7 +2203,7 @@ const proactiveSweep = repeatAfterEach(async () => {
       }),
     );
   }
-}, 60_000);
+}, 30_000);
 /*
  * Follow-ups a Bot scheduled for itself: one headless turn each, through the same turn runner as a
  * routine, into the person's conversation with that Bot. See agents/wake-up.ts.
@@ -2256,10 +2256,10 @@ const wakeUpSweep = repeatAfterEach(async () => {
       }),
     );
   }
-}, 5_000);
+}, 1_000);
 const wakeUpReaper = repeatAfterEach(async () => {
   await wakeUpRunner.reap().catch(() => 0);
-}, 60 * 60_000);
+}, 15 * 60_000);
 const deliverySweeps = DELIVERY_WORK_KINDS.map((kind) =>
   repeatAfterEach(async () => {
     try {
@@ -2273,7 +2273,7 @@ const deliverySweeps = DELIVERY_WORK_KINDS.map((kind) =>
         }),
       );
     }
-  }, 2_000),
+  }, 500),
 );
 
 const personResponseOwner = workOwner("person-response");
@@ -2289,7 +2289,7 @@ const groupSweep = repeatAfterEach(async () => {
       }),
     );
   }
-}, 1_000);
+}, 250);
 
 const personResponseSweep = repeatAfterEach(
   createPersonResponseTick({
@@ -2305,7 +2305,7 @@ const personResponseSweep = repeatAfterEach(
     // Assigned further down, once delivery is wired.
     notify: (scope, input) => deliveryNotifications(scope, input),
   }),
-  2_000,
+  500,
 );
 
 /**
@@ -2385,7 +2385,7 @@ repeatAfterEach(
       );
     }
   },
-  60 * 60 * 1_000,
+  15 * 60_000,
 );
 
 /*
@@ -2421,7 +2421,7 @@ repeatAfterEach(async () => {
       error instanceof Error ? error.message : error,
     );
   }
-}, 10_000);
+}, 5_000);
 
 /*
  * Enterprise controls (server/src/admin): capability switches, SSO-required, SCIM offboarding,

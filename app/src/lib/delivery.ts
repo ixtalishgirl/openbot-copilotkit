@@ -37,7 +37,7 @@ export function deliveryQueryOptions() {
       });
       return response.json();
     },
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
   });
 }
 /** A one-time `link <code>` message for the OpenTag app in Slack or Teams. */

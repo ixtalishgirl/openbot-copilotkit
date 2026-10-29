@@ -99,7 +99,7 @@ export type BrowserRouteDeps = {
  * phase changes and every 30 s while one runs (shared/recorder-api.ts), so three missed reports in a row: a browser that
  * quit or lost its network mid-recording stops showing the red dot after this, rather than forever.
  */
-export const ACTIVITY_STALE_MS = 90_000;
+export const ACTIVITY_STALE_MS = 300_000;
 
 /** The person's own browsers in the order the Browser button tries them: Chrome first, then Edge. */
 const REAL_BROWSERS: readonly RealBrowser[] = ["chrome", "msedge"];
@@ -110,18 +110,18 @@ const STORE_OF: Record<RealBrowser, "chrome" | "edge"> = {
 };
 
 /** How much of the computer's sentence a failure's log line keeps: every sentence it says, and never a page of text. */
-const ERROR_LOG_CHARS = 500;
+const ERROR_LOG_CHARS = 2000;
 /** Narration is the largest body here: 4,000 characters of one phrase, as UTF-8, with room for the rest. */
-const BODY_LIMIT_BYTES = 16 * 1024;
+const BODY_LIMIT_BYTES = 64 * 1024;
 /** Launching a browser, loading the Recorder and handing it its connection takes seconds; a cold computer more. */
-const OPEN_TIMEOUT_MS = 90_000;
+const OPEN_TIMEOUT_MS = 180_000;
 /**
  * How long OpenBot waits for the computer to answer. Longer than the computer's own navigation timeout
  * (agent-computer's NAVIGATION_TIMEOUT_MS, 30 s by default), so a page that does not load is answered by the computer,
  * which can say which page and why, rather than by OpenBot giving up at the same moment and blaming the browser. The
  * deadline the Bots' computer transport gives a browser action (computer/client.ts).
  */
-export const CALL_TIMEOUT_MS = 45_000;
+export const CALL_TIMEOUT_MS = 120_000;
 /**
  * How long OpenBot waits for the browser's state: under the 10 s after which `Bun.serve` closes a request that has sent
  * nothing (its default `idleTimeout`), and over the 5 s the computer gives the browser before it answers that the
@@ -131,7 +131,7 @@ export const CALL_TIMEOUT_MS = 45_000;
  * waited 45 s for it, and the person's request had already ended with an empty reply at 10: the Browser page had
  * nothing to show and nothing to say, and the sidebar's Browser button went away.
  */
-export const STATE_TIMEOUT_MS = 8_000;
+export const STATE_TIMEOUT_MS = 20_000;
 /**
  * HOW LONG EACH OF THESE ROUTES HAS TO ANSWER THE PERSON, from the moment their request arrives, and how long OpenBot's
  * server keeps their request open for it (`browserRequestSeconds`, which http-server.ts applies with Bun's
@@ -149,11 +149,11 @@ export const STATE_TIMEOUT_MS = 8_000;
  */
 /** An open, and a Record, which may open the browser's connection again first: a computer woken from sleep, then a
  * browser launched, the Recorder loaded and handed its connection. */
-export const OPEN_BUDGET_MS = 150_000;
+export const OPEN_BUDGET_MS = 600_000;
 /** Tabs, an address, a phrase or a close: the computer's own wait, and finding the computer it runs on. */
 export const CALL_BUDGET_MS = CALL_TIMEOUT_MS + 15_000;
 /** What the person's request is kept open for past its budget and a state read: the database, and the answer itself. */
-const ANSWER_MARGIN_MS = 7_000;
+const ANSWER_MARGIN_MS = 15_000;
 
 /**
  * How long OpenBot's server keeps a person's request to one of these routes open, in seconds, or undefined for the state
@@ -208,7 +208,7 @@ async function inBudget<T>(work: Promise<T>, path: string): Promise<T> {
  * How long a revoke waits for the person's browser to hear of it. The revoke has happened either way: a browser that
  * did not hear in time hears on its next call to OpenBot, and the state route reports it signed out meanwhile.
  */
-const DISCONNECT_TIMEOUT_MS = 5_000;
+const DISCONNECT_TIMEOUT_MS = 15_000;
 
 /**
  * How far from its arrival a narration time may be once it is on this server's clock. A page sends a phrase as it ends,

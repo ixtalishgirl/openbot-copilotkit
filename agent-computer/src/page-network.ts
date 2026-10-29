@@ -347,7 +347,7 @@ async function userAgentFor(context: BrowserContext, page: Page) {
 }
 
 /** How long a cross-site frame is held for its user agent before it is let go regardless. */
-const CHILD_SETUP_BUDGET_MS = 2_000;
+const CHILD_SETUP_BUDGET_MS = 10_000;
 
 /** Override one target's user agent, and every cross-site frame's inside it as each one starts. */
 async function overrideUserAgent(target: Target, override: UserAgentOverride) {

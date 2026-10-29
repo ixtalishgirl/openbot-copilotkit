@@ -11,14 +11,14 @@ export const browserKeys = {
 };
 
 /** How often the Browser page asks again, the same once a second the computer's control state is read. */
-export const BROWSER_POLL_MS = 1000;
+export const BROWSER_POLL_MS = 500;
 
 /**
  * How often the sidebar asks while the person's browser is closed and nothing records. Opening it from the sidebar
  * asks again at once, so this only catches a browser opened somewhere else (another of the person's OpenBot windows,
  * or the Browser page), or a recording started in a browser OpenBot does not hear from otherwise.
  */
-export const BROWSER_CLOSED_POLL_MS = 30_000;
+export const BROWSER_CLOSED_POLL_MS = 5_000;
 
 /**
  * How often the sidebar asks, from what it last heard. Every second while a Record pressed in a Recorder's own toolbar

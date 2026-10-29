@@ -15,10 +15,10 @@ import {
  */
 
 /** How long an endpoint gets to answer. Short: this is a person waiting on a form. */
-const TEST_TIMEOUT_MS = 15_000;
+const TEST_TIMEOUT_MS = 30_000;
 
 /** Enough of the stream to prove it is an agent. Reading it all could mean reading a whole reply. */
-const MAX_BYTES = 8_000;
+const MAX_BYTES = 64_000;
 
 /**
  * The opening of the answer, and then stop reading.

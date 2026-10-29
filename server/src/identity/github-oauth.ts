@@ -13,7 +13,7 @@ import { OAUTH_REQUEST_TIMEOUT_MS } from "../timeouts";
 export const GITHUB_CALLBACK_PATH = "/api/identity/github/callback";
 
 const STATE_LABEL = "identity-github-connect";
-const STATE_TTL_MS = 10 * 60_000;
+const STATE_TTL_MS = 30 * 60_000;
 
 const AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const TOKEN_URL = "https://github.com/login/oauth/access_token";

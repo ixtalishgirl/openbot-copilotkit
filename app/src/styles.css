@@ -40,7 +40,7 @@
    * below, which puts `color` back, was the only place the text was readable.
    */
   -webkit-text-fill-color: transparent;
-  animation: tool-line-sweep 1.6s linear infinite;
+  animation: tool-line-sweep 0.8s linear infinite;
 }
 
 @keyframes tool-line-sweep {

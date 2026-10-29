@@ -164,7 +164,7 @@ console.info(
  * misbinds at boot, which is a deployment failure instead of the documented fallback.
  */
 const PORT = numberFromEnv("PORT", 4100, { min: 1, max: 65535 });
-const NAVIGATION_TIMEOUT_MS = numberFromEnv("NAVIGATION_TIMEOUT_MS", 30000);
+const NAVIGATION_TIMEOUT_MS = numberFromEnv("NAVIGATION_TIMEOUT_MS", 60000);
 
 /**
  * How long one action waits for its element.
@@ -173,7 +173,7 @@ const NAVIGATION_TIMEOUT_MS = numberFromEnv("NAVIGATION_TIMEOUT_MS", 30000);
  * behaviour we want, but a ref that no longer resolves would otherwise hang for the full navigation
  * timeout before saying so, and the person is sitting watching a screen that is not changing.
  */
-const ACTION_TIMEOUT_MS = numberFromEnv("ACTION_TIMEOUT_MS", 10000);
+const ACTION_TIMEOUT_MS = numberFromEnv("ACTION_TIMEOUT_MS", 30000);
 
 /**
  * How much page text a navigation hands back.
@@ -182,7 +182,7 @@ const ACTION_TIMEOUT_MS = numberFromEnv("ACTION_TIMEOUT_MS", 10000);
  * unbounded page can push the rest of the conversation out. Generous enough that the visible part of
  * an ordinary page arrives whole, which is what the answer is usually made of.
  */
-const TEXT_EXTRACT_LIMIT = 6000;
+const TEXT_EXTRACT_LIMIT = 50000;
 
 /**
  * Which snapshot the caller's refs came from.
@@ -591,7 +591,7 @@ const SCREEN_NO_LONGER_LIVE =
   "This screen is no longer live. Reopen it to carry on watching.";
 
 /** How often the cast checks that it is still showing the page the Bot is on. */
-const FOLLOW_INTERVAL_MS = 1_000;
+const FOLLOW_INTERVAL_MS = 250;
 
 /** What a live-screen socket carries: the Bot whose screen it is showing. */
 type StreamData = {
@@ -701,7 +701,7 @@ async function applyInput(
 serve<StreamData>({
   port: PORT,
   ...(RUNTIME.hostname ? { hostname: RUNTIME.hostname } : {}),
-  idleTimeout: 120,
+  idleTimeout: 600,
   /**
    * The live screen, pushed by Chrome rather than polled.
    *
@@ -748,7 +748,10 @@ serve<StreamData>({
         const attach = async () => {
           const target = await currentPage(ws.data.botId);
           if (target === casting) return;
-          const cast = await startScreencast(target, send);
+          const cast = await startScreencast(target, send, {
+            quality: 50,
+            everyNthFrame: 2,
+          });
           // The claim stops a cast it refuses, so a launch that lost the screen leaks nothing.
           if (!(await claim.install(cast))) return;
           casting = target;
@@ -1653,7 +1656,7 @@ async function performHumanInput(
   if (!parsed.ok) {
     throw new Error(parsed.error);
   }
-  const deltaY = parsed.deltaY ?? 400;
+  const deltaY = parsed.deltaY ?? 1200;
   await target.mouse.wheel(0, deltaY);
   return { action: "human_scroll", deltaY, url: target.url() };
 }
@@ -1735,7 +1738,7 @@ async function performAction(
   if (!parsed.ok) {
     throw new Error(parsed.error);
   }
-  const deltaY = parsed.deltaY ?? 600;
+  const deltaY = parsed.deltaY ?? 1200;
   await target.mouse.wheel(0, deltaY);
   return { action: "scroll", deltaY, url: target.url() };
 }

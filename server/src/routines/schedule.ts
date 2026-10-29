@@ -1,7 +1,7 @@
 import { CronExpressionParser } from "cron-parser";
 
 /** Routines may run at most this often. A model can be talked into anything; the floor cannot. */
-export const MINIMUM_INTERVAL_MS = 15 * 60 * 1000;
+export const MINIMUM_INTERVAL_MS = 60_000;
 
 export class ScheduleRefusedError extends Error {
   constructor(message: string) {
@@ -30,7 +30,7 @@ function hasFiveFields(cron: string): boolean {
  * wholesale at the cap rather than evicted piecemeal — the population that matters (the handful of
  * zones and expressions real routines use) is re-learned in one pass and the code stays one line.
  */
-const MAX_MEMOIZED_VERDICTS = 1000;
+const MAX_MEMOIZED_VERDICTS = 10_000;
 
 const timeZoneVerdicts = new Map<string, boolean>();
 
@@ -82,7 +82,7 @@ const FLOOR_SCAN_START = new Date("2024-01-01T00:00:00Z");
  * than 200 occurrences from the scan start can still slip through, which is why the per-call pair
  * check below stays as the runtime backstop.
  */
-const FLOOR_SCAN_OCCURRENCES = 200;
+const FLOOR_SCAN_OCCURRENCES = 1000;
 
 /** null means the expression cleared the floor; a string is the refusal to throw. */
 const floorVerdicts = new Map<string, string | null>();

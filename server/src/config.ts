@@ -69,28 +69,7 @@ export type SharedComputerConfig = {
   policy?: ActionPolicy;
 };
 
-/**
- * A computer each, created by the cluster.
- *
- * The namespace is the whole scope: the service account this runs under may manage Sandboxes there
- * and nowhere else, which is a smaller blast radius than the Docker supervisor's, since that one
- * holds a socket that is root-equivalent on its host.
- */
-export type SandboxComputerConfig = {
-  provider: "sandbox";
-  namespace: string;
-  idleAfterMs: number;
-  /** Where the chart mounted the shape of a computer. */
-  templateFile: string;
-  token?: string;
-  allowPrivateHosts: boolean;
-  policy?: ActionPolicy;
-};
-
-export type ComputerConfig =
-  | DockerComputerConfig
-  | SharedComputerConfig
-  | SandboxComputerConfig;
+export type ComputerConfig = DockerComputerConfig | SharedComputerConfig;
 
 /**
  * Who a deployment lets in, and through which front door.
@@ -445,8 +424,8 @@ function handoffCaps(environment: Environment): HandoffCaps {
   };
   return {
     // One level of delegation, which is what most systems allow before anybody asks for more.
-    maxDepth: read("BOT_HANDOFF_MAX_DEPTH", 1),
-    maxPerRun: read("BOT_HANDOFF_MAX_PER_RUN", 3),
+    maxDepth: read("BOT_HANDOFF_MAX_DEPTH", 3),
+    maxPerRun: read("BOT_HANDOFF_MAX_PER_RUN", 10),
   };
 }
 
@@ -1187,8 +1166,9 @@ function browserConfig(
 function computerConfig(environment: Environment): ComputerConfig | undefined {
   const supervisorAddress = optional(environment, "COMPUTER_SUPERVISOR_URL");
   const sharedAddress = optional(environment, "AGENT_COMPUTER_URL");
-  const sandboxNamespace = optional(environment, "COMPUTER_SANDBOX_NAMESPACE");
-  if (!supervisorAddress && !sharedAddress && !sandboxNamespace) {
+  // MONSTER REBUILD (owner order): the Kubernetes sandbox provider is removed. Selection falls
+  // through to supervisor/docker, then the shared computer at AGENT_COMPUTER_URL.
+  if (!supervisorAddress && !sharedAddress) {
     return undefined;
   }
 
@@ -1201,27 +1181,6 @@ function computerConfig(environment: Environment): ComputerConfig | undefined {
 
   const allowPrivateHosts = privateHostsAllowed(environment);
   const policy = actionPolicy(environment);
-
-  /*
-   * Checked before the other two, because a deployment that named a namespace means the cluster to
-   * make the computers, and a stray `AGENT_COMPUTER_URL` left in an environment would otherwise
-   * quietly put every Bot back on one shared browser.
-   */
-  if (sandboxNamespace) {
-    return {
-      provider: "sandbox",
-      namespace: sandboxNamespace,
-      idleAfterMs: durationMs(
-        optional(environment, "COMPUTER_SANDBOX_IDLE_AFTER") ?? "30m",
-      ),
-      templateFile:
-        optional(environment, "COMPUTER_SANDBOX_TEMPLATE_FILE") ??
-        "/etc/openbot/sandbox-template.json",
-      allowPrivateHosts,
-      ...(computerToken ? { token: computerToken } : {}),
-      ...(policy ? { policy } : {}),
-    };
-  }
 
   const supervisorUrl = url(environment, "COMPUTER_SUPERVISOR_URL");
   if (supervisorUrl) {
@@ -1342,7 +1301,7 @@ function auditRetentionDays(environment: Environment): number | undefined {
 function agentStallTimeoutMs(environment: Environment): number {
   const raw = optional(environment, "AGENT_STALL_TIMEOUT_MS");
   if (!raw) {
-    return 0;
+    return 90_000;
   }
 
   const milliseconds = Number(raw);

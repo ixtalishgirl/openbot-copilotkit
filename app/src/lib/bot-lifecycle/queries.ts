@@ -94,7 +94,7 @@ export function botAttentionQueryOptions() {
         fallback: "Could not load what your Bots need",
       }),
     // Questions and approvals arrive from headless work nobody is watching, so this polls.
-    refetchInterval: 15_000,
+    refetchInterval: 7_500,
   });
 }
 
@@ -115,7 +115,7 @@ export function botActivityQueryOptions(agentId: string) {
       client(`${botPath(agentId)}/activity`, "activity", {
         fallback: "Could not load this Bot's activity",
       }),
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
   });
 }
 

@@ -48,7 +48,7 @@ export function useNarrationChoice() {
 }
 
 /** How long Record waits for a choice it has not heard yet, before it records without narration. */
-const READ_WAIT_MS = 3_000;
+const READ_WAIT_MS = 1_000;
 
 /**
  * The signed-in person's narration choice, from the server: the read already under way when there is one, which is

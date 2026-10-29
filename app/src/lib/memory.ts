@@ -53,7 +53,7 @@ export const memorySourcesQueryOptions = () =>
       client("/api/memory/sources", "sources", {
         fallback: "Could not load memory sources",
       }),
-    refetchInterval: 15_000,
+    refetchInterval: 7_500,
   });
 export const availableMemorySourcesQueryOptions = (id: string) =>
   queryOptions({

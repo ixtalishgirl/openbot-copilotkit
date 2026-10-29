@@ -61,7 +61,7 @@ export async function joinWithin({
  * Long enough that an ending connect is waited for, short enough that a stuck one is not the end of
  * the conversation.
  */
-const DETACH_GRACE_MS = 2_000;
+const DETACH_GRACE_MS = 1_000;
 
 /** A deadline, as a promise. Separate so a test can supply one it controls. */
 export function afterMs(milliseconds: number): Promise<void> {

@@ -15,7 +15,7 @@ import { EASE_OUT } from "@/lib/motion";
  * content is laid out once and the pane reveals it.
  */
 
-const ANIMATION_DURATION_SECONDS = 0.3;
+const ANIMATION_DURATION_SECONDS = 0.15;
 const DEFAULT_DETAIL_WIDTH = 400;
 const MIN_MAIN_WIDTH = 400;
 
@@ -25,7 +25,7 @@ const MIN_MAIN_WIDTH = 400;
  * Delaying content slightly but ending with the pane keeps the reveal as one motion.
  */
 const CONTENT_ENTRANCE_SECONDS = 0.18;
-const CONTENT_ENTRANCE_DELAY_SECONDS = 0.12;
+const CONTENT_ENTRANCE_DELAY_SECONDS = 0;
 const CONTENT_ENTRANCE_OFFSET = "translateY(8px)";
 
 export function DetailPanel({

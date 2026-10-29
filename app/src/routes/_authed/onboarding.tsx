@@ -358,10 +358,10 @@ function RouteComponent() {
           navigate({ to: "/" });
         }
       }}
-      transition={{ duration: 0.5, ease: "easeInOut" }}
+      transition={{ duration: 0.25, ease: "easeInOut" }}
     >
       <div className="mx-auto w-full max-w-2xl px-4">
-        <MotionConfig transition={{ duration: 0.5, type: "spring", bounce: 0 }}>
+        <MotionConfig transition={{ duration: 0.25, type: "spring", bounce: 0 }}>
           {/* The frame follows each pane's height, so the buttons glide instead of jumping. */}
           <motion.div
             animate={{ height: bounds.height > 0 ? bounds.height : "auto" }}

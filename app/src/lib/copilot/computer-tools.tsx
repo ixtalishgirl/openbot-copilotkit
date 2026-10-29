@@ -32,7 +32,7 @@ export { callComputer } from "@/lib/computers/call";
 const WAIT_FOR_SECRET_MS = 10 * 60_000;
 
 /** How often the waiting handler asks whether the person has answered yet. */
-const WAIT_POLL_MS = 1_000;
+const WAIT_POLL_MS = 500;
 
 /** Hold the secret-entry call open until its masked prompt is answered, cancelled, or expires. */
 async function waitForSecret(

@@ -80,7 +80,7 @@ export class DictationSession {
         if (seconds !== this.state.seconds)
           this.update({ ...this.state, seconds });
         if (seconds >= MAX_DICTATION_SECONDS) void this.finish();
-      }, 250);
+      }, 1000);
     } catch (error) {
       if (generation !== this.generation) return;
       this.update({

@@ -121,7 +121,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       onClick={async () => {
         await navigator.clipboard.writeText(value);
         setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        setTimeout(() => setCopied(false), 1000);
       }}
     >
       {copied ? "Copied" : label}

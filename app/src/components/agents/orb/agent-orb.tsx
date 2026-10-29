@@ -47,7 +47,7 @@ const AMPLITUDE_BLUR_FALLOFF = 0.45;
 const AMPLITUDE_SCALE_GAIN = 0.12;
 /** Single lateral nudge used to signal `error`, well under 200ms. */
 const ERROR_SHAKE_KEYFRAMES = [0, -3, 3, 0];
-const ERROR_SHAKE_DURATION = 0.18;
+const ERROR_SHAKE_DURATION = 0.10;
 const EASE_IN_OUT = [0.645, 0.045, 0.355, 1] as const;
 const GLOW_BLUR_RATIO = 0.28;
 const GLOW_MAX_OPACITY = 0.7;
@@ -61,7 +61,7 @@ const BREATHE_SCALE = [1, 1.035, 1];
 const BREATHE_SECONDS = 5.5;
 const SPRING_DEFAULT: Transition = {
   bounce: 0.1,
-  duration: 0.25,
+  duration: 0.15,
   type: "spring",
 };
 

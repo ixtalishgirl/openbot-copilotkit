@@ -229,7 +229,7 @@ export function matchesFilter(
   return true;
 }
 
-export const MAX_EVENT_PAYLOAD = 32_768;
+export const MAX_EVENT_PAYLOAD = 128 * 1024;
 /**
  * Provider payloads are often larger than the ledger's 32 KiB cap (a Sentry alert carries the whole
  * event). The top-level scalars survive intact and the rest is kept as a bounded excerpt, so the

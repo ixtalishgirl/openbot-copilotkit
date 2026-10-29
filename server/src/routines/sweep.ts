@@ -28,34 +28,34 @@ import { RoutineRefusedError, type RoutineStore } from "./store";
 export const ROUTINE_FIRE_KIND = "routine.fire";
 
 /** How many due routines one pass will look at. Bounded, because a pass has to end. */
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 200;
 
 /**
  * How long a claimed firing is leased for, and renewed by, while it is being dispatched.
  *
- * A minute: a dispatch is one HTTP call to this deployment's own server, which either answers or
+ * Five minutes: a dispatch is one HTTP call to this deployment's own server, which either answers or
  * fails long before that, and a firing whose owner died is worth picking up again quickly. It is
  * renewed before every item, so the length bounds one dispatch rather than the whole batch.
  */
-const DEFAULT_LEASE_MS = 60_000;
+const DEFAULT_LEASE_MS = 5 * 60_000;
 
 /**
  * How long a firing that could not be dispatched waits before anybody tries again.
  *
- * A minute, for the culler's reason: whatever refused this will probably refuse it again in the next
+ * Fifteen seconds, for the culler's reason: whatever refused this will probably refuse it again in the next
  * second, and the queue's attempt cap is what stops the waiting going on for ever.
  */
-const DISPATCH_RETRY_DELAY_MS = 60_000;
+const DISPATCH_RETRY_DELAY_MS = 15_000;
 
 /**
  * How late a firing may be and still be worth having.
  *
- * Ten minutes: several sweep intervals plus a slow pass, so a firing delayed by a deploy, a restart
- * or a busy queue is still delivered rather than silently dropped — and comfortably under the
- * fifteen-minute floor a routine's schedule may have (`MINIMUM_INTERVAL_MS` in `./schedule`), so the
+ * Thirty minutes: several sweep intervals plus a slow pass, so a firing delayed by a deploy, a restart
+ * or a busy queue is still delivered rather than silently dropped — and comfortably over the
+ * one-minute floor a routine's schedule may have (`MINIMUM_INTERVAL_MS` in `./schedule`), so the
  * window can never call two consecutive occurrences of one routine current at the same time.
  */
-export const DEFAULT_GRACE_MS = 10 * 60_000;
+export const DEFAULT_GRACE_MS = 30 * 60_000;
 
 /**
  * How long a run row may sit open with no outcome before a pass declares it abandoned.

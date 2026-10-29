@@ -1033,7 +1033,7 @@ export async function exchangeRefreshTokenOverHttp(input: {
 }
 
 /** How long a vendor's token endpoint gets. Shorter than a call: it is one round trip, or nothing. */
-export const TOKEN_TIMEOUT_MS = 10_000;
+export const TOKEN_TIMEOUT_MS = 30_000;
 
 /**
  * The deployment's OAuth client for one vendor, as it is held in the vault.
@@ -1098,7 +1098,7 @@ export type StoredClient = { client: OAuthClient; registeredAt: Date | null };
  * this was already the product of a re-registration, so registering again inside the window is
  * amplification rather than recovery — the honest answer is the vendor's refusal, unedited.
  */
-export const CLIENT_REREGISTRATION_BACKOFF_MS = 5 * 60_000;
+export const CLIENT_REREGISTRATION_BACKOFF_MS = 1 * 60_000;
 
 /**
  * The names that read as "tell me who this key belongs to".

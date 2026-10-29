@@ -32,7 +32,7 @@ import {
 } from "./triggers";
 import type { ResponsibilityEvent, ResponsibilityEventResult } from "./types";
 
-export const TRIGGER_BODY_LIMIT = 256 * 1024;
+export const TRIGGER_BODY_LIMIT = 1024 * 1024;
 
 export type TriggerIngressDeps = {
   directory: TriggerDirectory;

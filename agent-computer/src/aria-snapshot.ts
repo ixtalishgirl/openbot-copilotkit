@@ -18,7 +18,7 @@
 import { parse as parseYaml } from "yaml";
 
 /** How many elements a snapshot will describe. Bounded for the same reason the text extract is. */
-const SNAPSHOT_ELEMENT_LIMIT = 200;
+const SNAPSHOT_ELEMENT_LIMIT = 2000;
 
 /**
  * The roles worth handing to a Bot that wants to act.
@@ -81,7 +81,7 @@ export type SnapshotElement = {
 };
 
 /** The most choices one dropdown reports, so a list of every country cannot crowd out the form. */
-const OPTION_LIMIT = 50;
+const OPTION_LIMIT = 500;
 
 /** The descriptor half of an entry: everything before the colon. */
 type Descriptor = {
@@ -196,13 +196,13 @@ function toElement(
   const element: SnapshotElement = {
     ref,
     role: descriptor.role,
-    name: cutAtCodeUnits(descriptor.name, 200),
+    name: cutAtCodeUnits(descriptor.name, 1000),
   };
 
   // Values arrive as text, with quoting and escapes already resolved.
   if (typeof value === "string") {
     const text = value.trim();
-    if (text) element.value = cutAtCodeUnits(text, 200);
+    if (text) element.value = cutAtCodeUnits(text, 1000);
   }
 
   if (descriptor.flags.has("disabled")) element.disabled = true;
@@ -258,7 +258,7 @@ function optionsOf(
           : undefined;
     const descriptor = key ? parseDescriptor(key) : null;
     if (descriptor?.role !== "option" || descriptor.flags.has("ref")) continue;
-    const name = cutAtCodeUnits(descriptor.name, 200);
+    const name = cutAtCodeUnits(descriptor.name, 1000);
     if (descriptor.flags.has("selected") && selected === undefined)
       selected = name;
     if (options.length < OPTION_LIMIT) options.push(name);

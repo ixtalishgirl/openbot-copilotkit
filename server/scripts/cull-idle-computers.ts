@@ -27,11 +27,16 @@ if (!config.computer) {
     "No computer provider is configured, so there are no computers to suspend.",
   );
 }
-if (config.computer.provider !== "sandbox") {
+if (config.computer.provider !== "docker") {
   throw new Error(
     `The culler only has something to do where each Bot has its own computer, and this deployment uses the "${config.computer.provider}" provider.`,
   );
 }
+
+// MONSTER REBUILD (owner order): the Kubernetes sandbox provider is removed, so
+// the idle-after window no longer comes from its config. Read it from the env
+// with the god-mode aggressive default of 5 minutes.
+const idleAfterMs = Number(process.env.COMPUTER_IDLE_AFTER_MS ?? 5 * 60 * 1000);
 
 const database = createDatabase(config.databaseUrl);
 const queue = createWorkQueue(database);
@@ -45,7 +50,7 @@ try {
     database,
     queue,
     provider,
-    idleAfterMs: config.computer.idleAfterMs,
+    idleAfterMs: idleAfterMs,
     owner,
   };
   const { offered } = await offerIdleComputers(options);
@@ -73,7 +78,7 @@ try {
      * gone. A day is still right for the other half, where the window is the backoff before a
      * suspension that keeps failing is tried again.
      */
-    finishedOlderThanMs: config.computer.idleAfterMs,
+    finishedOlderThanMs: idleAfterMs,
   });
   console.info(
     JSON.stringify({

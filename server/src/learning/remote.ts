@@ -18,7 +18,7 @@ const RESERVED_TOOLS = new Set([
   "copilotkit_load_skill",
   "copilotkit_read_skill_file",
 ]);
-const MAX_SKILL_STEPS = 10;
+const MAX_SKILL_STEPS = 30;
 
 /**
  * Remote frameworks use their normal AG-UI client-tool boundary for skill reads.

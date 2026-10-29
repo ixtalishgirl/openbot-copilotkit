@@ -15,10 +15,10 @@ import {
   type VoiceSessionServices,
 } from "./session-routes";
 
-const VOICE_HANDSHAKE_TIMEOUT_MS = 20_000;
-const ATTEMPT_WINDOW_MS = 60_000;
-const MAX_ATTEMPTS = 5;
-const MAX_TRACKED_USERS = 1024;
+const VOICE_HANDSHAKE_TIMEOUT_MS = 30_000;
+const ATTEMPT_WINDOW_MS = 120_000;
+const MAX_ATTEMPTS = 10;
+const MAX_TRACKED_USERS = 100_000;
 
 export function createVoiceRoutes(
   requireUser: MiddlewareHandler<{ Variables: AppVariables }>,

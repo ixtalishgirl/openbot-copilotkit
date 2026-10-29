@@ -95,7 +95,7 @@ export async function sensitiveRefs(
       const matches = await target
         .locator(`aria-ref=${element.ref}`)
         .evaluate(isSensitiveElement, SENSITIVE_FIELD_SELECTOR, {
-          timeout: 1_000,
+          timeout: 5_000,
         })
         .catch(() => true);
       if (matches) sensitive.add(element.ref);

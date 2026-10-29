@@ -658,7 +658,7 @@ export const REVOCABLE: VendorAccountStatus[] = [
  * to an operator whose new app is missing; held for seconds it would not survive the debounce it
  * exists for.
  */
-export const DIRECTORY_TTL_MS = 10 * 60 * 1000;
+export const DIRECTORY_TTL_MS = 60 * 60 * 1000;
 
 /**
  * The held catalogue as a copy nobody else holds, which is what makes handing it out safe.

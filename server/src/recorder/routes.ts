@@ -44,7 +44,7 @@ export type RecorderRouteDeps = {
   auditStore?: AuditStore;
 };
 
-const BODY_LIMIT_BYTES = 2 * 1024;
+const BODY_LIMIT_BYTES = 8 * 1024;
 
 /** A cross-site form can only send these three content types, so requiring JSON stops one. */
 const jsonOnly: MiddlewareHandler = async (context, next) => {

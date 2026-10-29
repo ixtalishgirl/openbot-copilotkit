@@ -195,16 +195,16 @@ export type Narration = {
 };
 
 /** How long a stop waits for the speech service to hand over the phrase in progress (it took 53 ms in a real run). */
-export const FLUSH_MS = 1_500;
+export const FLUSH_MS = 300;
 /** How often a language being downloaded for on-device recognition is asked about again. */
-export const DOWNLOAD_POLL_MS = 3_000;
+export const DOWNLOAD_POLL_MS = 1_000;
 /** Chrome ends a recognition by itself after a silence or its own time limit; one that ends sooner than this is
  * restarted with a growing delay, never in a tight loop. */
-const QUICK_END_MS = 2_000;
-const RESTART_FIRST_MS = 500;
-const RESTART_MAX_MS = 30_000;
-const NETWORK_FIRST_MS = 2_000;
-const NETWORK_MAX_MS = 60_000;
+const QUICK_END_MS = 1_000;
+const RESTART_FIRST_MS = 100;
+const RESTART_MAX_MS = 10_000;
+const NETWORK_FIRST_MS = 500;
+const NETWORK_MAX_MS = 15_000;
 
 /** Listens until stopped, restarting each recognition Chrome ends, and hands over every final phrase. */
 export function startNarration(

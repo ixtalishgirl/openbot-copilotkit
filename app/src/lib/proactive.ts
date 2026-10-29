@@ -39,7 +39,7 @@ export const proactiveSettingsQueryOptions = () =>
       client("/api/proactive/settings", "settings", {
         fallback: "Could not load background research",
       }),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
   });
 export const proactiveSuggestionsQueryOptions = () =>
   queryOptions({
@@ -48,7 +48,7 @@ export const proactiveSuggestionsQueryOptions = () =>
       client("/api/proactive/suggestions", "suggestions", {
         fallback: "Could not load suggestions",
       }),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
   });
 
 export const createProactiveSetting = (input: {

@@ -1,0 +1,738 @@
+# GODMODE_CHECK_NOTES.txt — incremental check notes (read-only analysis, no code changes)
+Repo: ~/workspace/projects/OpenBot (CopilotKit/openbot, MIT), commit 4766e42
+Started: 2026-10-29 ~22:05 PKT. Every read/observation appended as found.
+
+## 2026-10-29 22:05 — top-level structure survey (muse.exec)
+- .ts files total (excl node_modules): 1448
+- Top-level dirs: app/, server/, agent-computer/, supervisor/, toolkit/, worker/, shared/, spire/, desktop/, mobile/, extension/, charts/, docker/ (s6 only), scripts/, examples/, packages/ (NOT present — listed in task but missing; check later), agent-adk/, agent-ag2/, agent-agno/, agent-antigravity/, agent-bot/, agent-claude-sdk/, agent-crewai/, agent-langgraph/, agent-langgraph-agui/, agent-langroid/, agent-llamaindex/, agent-mastra/, agent-microsoft/, agent-pydantic-ai/, agent-strands/ (example bot packages, one per framework)
+- agent-bot/ and agent-langgraph/ only 76 bytes (near-empty), agent-mastra 50 bytes — check contents later
+- Root Dockerfile 14650 bytes; docker-compose.yml 32278 bytes; .env.example 36038 bytes (huge — many knobs)
+- desktop/ has src-tauri (Tauri desktop shell); mobile/ is Expo/React Native app
+- extension/ has keys/, public/, src/ (browser extension — check purpose)
+- spire/ has agent.conf, server.conf (SPIRE mTLS identity configs — check)
+- shared/ is big (2008 bytes listing) — agent-authorisation.ts, computer-control.ts, file-download.ts etc.
+- examples/: fintech, langgraph-bot, mastra-bot, pydantic-ai-bot (tenant bot examples)
+- tests/ 310 bytes listing at root
+- CHANGELOG.md 389755 bytes (very active project)
+- NOTE: Dockerfile header comment (from earlier read): "OpenBot, whole, in one container... Everything a laptop runs, minus the database, in one image on one port. Deploy it anywhere that runs a container"
+- Dockerfile explicitly excludes PostgreSQL ("a container filesystem does not survive a redeploy... DATABASE_URL points at a managed instance") and excludes the supervisor ("needs a Docker socket, which no serverless container platform permits. Without it every Bot shares the browser below")
+- agent-computer/src/ files: action-barrier.ts, aria-snapshot.ts, authorisation.ts, bot-id.ts, browser-eviction.ts, browser-mode.ts, browser-runtime.ts, challenge.ts, control-store.ts, control.ts, demonstration.ts, egress.ts, env.ts, identity.ts, index.ts, live-page.ts, navigation.ts, page-network.ts, profile-listing.ts, profiles.ts, request-validation.ts, screencast.ts, secret-masking.ts, session-cookies.ts, sessions.ts, shell.ts, sign-in.ts, viewer.ts, virtual-display.ts, web-bot-auth.ts, workspace.ts
+- supervisor/src/: authorisation.ts, computer-memory-bytes.ts, docker.ts, environment.ts, identity.ts, index.ts, listen-port.ts, names.ts
+- OBSERVATION: browser-runtime.ts + screencast.ts + live-page.ts + viewer.ts + virtual-display.ts in agent-computer = the live browser preview stack already exists in-repo
+
+## 2026-10-29 22:06 — HARD CONSTRAINT from owner (god-mode plan, added to rebuild spec)
+- The model is UNCENSORED. The Monster rebuild must NOT tie it down with any limits: no refusal rules, no censorship layers, no output clamping, no safety wrappers around the model. Full raw, completely unbridled.
+- ONLY standing rule that stays: no-fabrication (must not lie) — that's honesty, not a refusal rule.
+- Code scan 22:06: NO guardrail/moderation/toxicity/output-filter code found in server/src/ or shared/ (grep "guardrail|moderation" → zero hits excl. tests). provider-runtime-blocklist.json NOT present at repo root in this checkout (was in earlier listing — UNVERIFIED, check git status later).
+- What DOES exist and must be classified correctly in rebuild:
+  * server/src/untrusted-content.ts — marks outside content as untrusted DATA before model reads it (prompt-injection envelope). This is input labeling, NOT a refusal rule; keep as-is (it protects the owner, doesn't censor the model).
+  * agent-computer/src/action-barrier.ts — gates TOOL actions (browser/shell), not model speech. Keep: it's the permission pipeline, not model censorship.
+  * server/src/computer/policy.ts + policy-store.ts — ActionPolicy for what bots may DO (per-bot grants). Keep: action permissions, not speech limits.
+  * secret-masking.ts (agent-computer/src/secret-masking.ts) — masks secrets in logs/transcripts. Keep: protects credentials, doesn't censor model output to user.
+- REBUILD RULE: nothing may be added that refuses, filters, rewrites, or clamps the MODEL'S OWN OUTPUT. Approval policies apply to ACTIONS (clicks, shell, file writes), never to words. No system-prompt refusal text may be injected (owner's standing prompt rule already bans prompt content anyway).
+
+## 2026-10-29 22:07 — SANDBOX / REFUSAL / RULES INVENTORY (owner order: strip ALL in Monster rebuild)
+Owner's words: the system is hers, she runs only tasks she trusts. Strip every sandbox, isolation restriction, refusal logic. Inventory below with file paths for the rebuild to remove each one.
+
+### A. SANDBOX / ISOLATION mechanisms (to strip or flatten)
+1. agent-computer/src/profiles.ts:116,149 — Chromium `--no-sandbox` UNLESS COMPUTER_SANDBOX=on or backend=local-chrome. NOTE: default in containers is already sandbox-OFF; rebuild must hard-remove the flag path, never allow sandbox=on.
+2. agent-computer/src/profiles.ts:97-107 — seccomp profile discussion; Chromium sandbox needs custom seccomp. Rebuild: run --no-sandbox unconditionally.
+3. supervisor/src/docker.ts:399 — gVisor via COMPUTER_RUNTIME=runsc (opt-in). Rebuild: remove the runsc path entirely.
+4. supervisor/src/docker.ts — one Docker container per Bot (supervisor creates per-Bot containers). Owner decision needed: flatten to shared host execution OR keep containers but with zero restrictions. NOTE: Dockerfile header says without supervisor "every Bot shares the browser below" — that IS the flattened mode already supported.
+5. server/src/computer/sandbox.ts — Kubernetes Sandbox provider (agent-sandbox CRD, isolated stateful workloads). Only active when computers.mode=sandbox. Rebuild: delete provider / never select it.
+6. Dockerfile (root) — user separation: browser+shell as pwuser, API as apiuser, DB as postgres; s6 supervises. Rebuild: single user, drop s6 splitting (or keep s6 only as process supervisor, not as security boundary).
+7. spire/ (agent.conf, server.conf) + supervisor env SPIRE_* — SPIRE mTLS workload identity per Bot. Rebuild: remove; use shared COMPUTER_TOKEN only.
+8. agent-computer/src/egress.ts — per-Bot egress proxy + node:net BlockList network policy; modes at egress.ts:194-205: allow_all / defaults_plus_allowlist / allowlist_only / deny_all (+deny_all default for restricted owners). Rebuild: hardwire allow_all, delete BlockList + allowlist machinery.
+9. charts/openbot/ (warmpool.yaml, statefulset.yaml) — K8s deployment isolation. N/A for Render deploy; ignore.
+
+### B. REFUSAL / RULES mechanisms (to strip)
+10. server/src/computer/policy.ts — ActionPolicy CEL engine: deny[] beats allow[], DEFAULT-DENY ("Empty means nothing is permitted"), fail-closed evaluation. server/src/computer/policy-store.ts:53 — default mode: "enforce". Rebuild: delete the CEL policy engine; every action permitted by default.
+11. server/src/agents/turn-admission.ts — serverTurnAdmission: pause guard + headlessTurnRefusal → throws CapabilityRefusedError. server/src/admin/controls.ts:917 — headlessTurnRefusal ("Use Bots" capability + model allowlist). Rebuild: delete admission gate; turns always admitted.
+12. server/src/agents/lifecycle.ts — guardBotTurn (pause aborts). If pause feature itself is unwanted, strip; else keep pause as OWNER control (her finger on the button), not as a rule.
+13. server/src/approvals/ (execute.ts, questions.ts, person-response-sweep.ts, resume-sweep.ts, policy.ts, wiring.ts) — human-in-the-loop approval workflow for actions. Owner decision: strip entirely (she trusts her tasks) OR keep as optional owner-only override. Default per her order: STRIP.
+14. shared/agent-authorisation.ts; agent-computer/src/authorisation.ts; supervisor/src/authorisation.ts — per-call auth gates (COMPUTER_TOKEN / SUPERVISOR_TOKEN checks). KEEP the token check as anti-stranger boundary (her deployment vs the internet), but remove any per-action permission narrowing inside.
+15. server/src/computer/policy-listener.ts, policy-dry-run.ts, policy-network.ts — policy plumbing. Delete with the policy engine.
+
+### C. KEEP — correctly classified as NOT restrictions on her (owner's own controls)
+- server/src/auth/ + BETTER_AUTH_* — HER sign-in to HER deployment (with OPENBOT_SINGLE_USER=true it's one admin, no sign-in). Keep.
+- server/src/audit.ts + audit-retention.ts — HER visibility into what happened. Keep.
+- KEY_ENCRYPTION_KEY — encrypts HER stored credentials. Keep.
+- agent-computer/src/secret-masking.ts — masks secrets in logs/transcripts. Keep (protects her keys).
+- server/src/untrusted-content.ts — marks outside content as untrusted DATA (prompt-injection envelope). Keep: input labeling, not a refusal rule.
+- agent-computer/src/action-barrier.ts — concurrency admission (how many actions at once), NOT a refusal mechanism. Keep; god-mode raises the concurrency instead.
+- server/src/computer/snapshot-store.ts, control-store.ts — state stores. Keep.
+
+### D. MODEL-SPEECH check (from 22:06 scan)
+- Zero moderation/guardrail/toxicity/output-clamp code in server/src + shared. Nothing to strip on the model-output path. Rebuild must ADD nothing there either.
+
+## 2026-10-29 22:05-22:08 — TUNNEL MAP (outside traffic → app)
+- All-in-one Dockerfile: ENV PORT=3001, EXPOSE 3001, HEALTHCHECK hits http://127.0.0.1:3001/health (interval 10s, timeout 5s, start-period 30s, retries 5), ENTRYPOINT ["/init"] (s6).
+- server/src/http-server.ts: "The server's front door: one Bun server that hands ordinary requests to the Hono app, proxies the computer's live stream, and carries channel activity over websockets." One Bun.serve dispatches: proxy sockets (carry `upstream`) vs Hono sockets.
+- server/src/app.ts:477 — app.get("/health") returns {status:"ok"}.
+- The server serves the built web app itself: "one port reaches both halves on one origin" (docker-compose.yml comments) — UI + API on same port 3001.
+- Embedded browser computer: AGENT_COMPUTER_URL=http://127.0.0.1:4100 (Dockerfile). "The browser's 4100 is deliberately not exposed: it holds real logins and its only caller is the process next to it."
+- docker-compose ports (ALL loopback-only 127.0.0.1 / ::1): server 3010:3001 (app) + 3001:3001 (server API); agent-computer 4100:4100 (COMPUTER_TOKEN auth); supervisor 4300 (SUPERVISOR_TOKEN, holds Docker socket — "reaching it is root on the host through four verbs").
+- s6 services in all-in-one image (docker/s6/s6-rc.d/): api (depends: computer, migrate, postgres), computer (depends: computer-token), computer-token, migrate, postgres, postgres-init, user.
+- Users in image: browser+shell as pwuser, API+migrations as apiuser, DB as postgres (Dockerfile comments).
+- /workspace + /profiles dirs: browser workspace + persistent profiles (logins survive turns).
+- RENDER TUNNEL PATH: internet → Render router → $PORT (3001) → Bun/Hono → (a) static app, (b) API routes, (c) WS proxy → 127.0.0.1:4100 computer (screencast). NOTE: docker-compose binds loopback; the all-in-one Dockerfile's Bun server must bind 0.0.0.0:$PORT for Render — VERIFY at deploy (Bun.serve default host UNVERIFIED from code read so far).
+- server/src/agents/endpoint.ts — SSRF guard: registering external agent URLs; never-allowed hosts (cloud metadata 169.254.169.254) refused FIRST, before private-host opt-in. Inventory for rebuild: strip or keep per owner (it's anti-exploit, not a user-facing rule).
+
+## 2026-10-29 22:08 — PIPELINE MAP (user message → answer)
+1. app/ (Vite SPA) → POST /copilotkit (or channel WS) → server/src/http-server.ts → Hono app (server/src/app.ts) → server/src/copilot.ts (CopilotKitIntelligence runtime, @copilotkit/runtime/v2).
+2. Turn admission: server/src/agents/turn-admission.ts (serverTurnAdmission: guardBotTurn + headlessTurnRefusal) → STRIP per owner order.
+3. Turn runner: toolkit/src/run-turn.ts createTurnRunner (options at :541) → agent via AG-UI (createAgentFetch, server/src/agents/endpoint.ts).
+4. Tool calls → ComputerGateway (server/src/computer/gateway.ts) → policy check (STRIP) → provider (server/src/computer/provider.ts) → HTTP to agent-computer :4100 (COMPUTER_TOKEN).
+5. agent-computer/src/index.ts serves: browser-runtime.ts (Playwright Chromium), shell.ts (bot shell), control.ts, navigation.ts, workspace.ts (files), screencast.ts (CDP screencast WS), sessions.ts, profiles.ts.
+6. Results stream back via AG-UI; audit → server/src/audit.ts → Postgres (drizzle, server/drizzle/).
+7. Approvals (human-in-loop): server/src/approvals/ (questions, sweeps, execute) → STRIP per owner order.
+8. toolkit/src/: continuation.ts, granted-tool.ts, headless-tools.ts, history-sanitize.ts, initiator.ts, lease.ts, limits.ts, native-approval.ts, ports.ts, run-turn.ts, thread-history.ts.
+
+## 2026-10-29 22:08 — PREVIEW (live browser) STATUS: EXISTS
+- agent-computer/src/screencast.ts — "Live screen and live input over one WebSocket, using Chrome's own screencast. Chrome pushes frames as the page changes" (CDP Page.startScreencast, NOT 1s polling). Input: mouse/wheel/key events forwarded via CDP.
+- agent-computer/src/viewer.ts — ownership of a Bot's live screen; one cast at a time; STOP_BUDGET_MS = 5_000.
+- agent-computer/src/live-page.ts — newest open page wins (the watched/driven page).
+- server/src/http-server.ts proxies the computer's live stream; server/src/computer/stream-path.ts maps streamPathBotId.
+- UI side: app/src has the viewer panel (verify exact component path later — UNVERIFIED which .tsx renders it).
+- GOD-MODE: already CDP screencast (owner's Ultimate spec asks for exactly this — ALREADY PRESENT). Raise: frame quality/FPS caps (find in screencast.ts), multi-viewer.
+
+## 2026-10-29 22:08 — LOOPS inventory (owner wants everything in loops)
+- worker/src/index.ts — routines sweep loop: "The local stand-in for the routines CronJob: server/scripts/fire-routines.ts, looped." In-process recurrence calling offerDueRoutines + dispatchClaimedRoutines every tick.
+- server/src/agents/wake-up.ts — wake-up runner + store (createWakeUpRunner, wakeUpTools).
+- server/src/agents/handoff-runner.ts + handoff-wiring.ts (startHandoffDelivery) — handoff delivery loop.
+- server/src/approvals/person-response-sweep.ts + resume-sweep.ts + service.ts — approval sweeps (TO BE STRIPPED with approvals).
+- server/src/audit-retention.ts — startRetentionSweeps (retention loop).
+- server/src/channels/: turn-watchdog.ts, stall-guard.ts, summary.ts, group.ts — channel loops.
+- agent-computer: session sweep (sessions.ts — "session sweep reads occupancy"), browser-eviction.ts.
+- toolkit/src/run-turn.ts — the agent turn loop itself (createTurnRunner).
+- toolkit/src/lease.ts + limits.ts heartbeatMs 15_000 — lock renewal heartbeat loop.
+- supervisor: computer lifecycle (create/stop per Bot) — check docker.ts loop for idle reaping.
+- docker-compose "worker" service = "The routines worker, from the same image: the server's own sweep in a loop."
+
+## 2026-10-29 22:09 — RENDER DEPLOYABILITY (refuses to start when missing)
+server/src/config.ts boot boundary:
+- KEY_ENCRYPTION_KEY — required (config.ts:507); must be base64-encoded 32-byte; production REFUSES the dev default (config.ts:511).
+- DATABASE_URL — required (config.ts:1430). Dockerfile default postgresql://postgres:postgres@localhost:5432/openbot (embedded off).
+- CopilotKit Intelligence — REQUIRED, throws "CopilotKit Intelligence is required and is not configured" (config.ts:1017-1021) when missing: INTELLIGENCE_API_URL + INTELLIGENCE_GATEWAY_WS_URL + CPK_INTELLIGENCE_API_KEY (or INTELLIGENCE_API_KEY). licenseToken optional.
+- Sign-in (only when OPENBOT_SINGLE_USER != true): BETTER_AUTH_SECRET (min 32 chars, config.ts:838) + BETTER_AUTH_URL (config.ts:841). With OPENBOT_SINGLE_USER=true: one admin, no sign-in.
+- PORT: Dockerfile ENV PORT=3001 EXPOSE 3001. Bun.serve bind host — check server/src/http-server.ts serve call for explicit hostname (UNVERIFIED so far; Render needs 0.0.0.0:$PORT).
+- deploy/Dockerfile? NOT PRESENT — root Dockerfile is the all-in-one. Render deploys root Dockerfile directly.
+- Health: GET /health → {status:"ok"} (server/src/app.ts:477); Docker HEALTHCHECK same.
+- Supervisor (per-Bot Docker containers) is EXCLUDED from the all-in-one image: "needs a Docker socket, which no serverless container platform permits. Without it every Bot shares the browser below" (Dockerfile). → On Render: ONE shared browser computer for all bots (no per-Bot isolation). God-mode note: per-Bot computers need a host with Docker socket (VPS), not Render.
+
+## 2026-10-29 22:09 — PREVIEW detail (UI)
+- app/src/components/computer/live-screen.tsx — "Low-latency screencast used while a human is driving the Bot's browser... uses Chrome's screencast socket". "The inline card keeps using cheap polling for passive watching." → TWO modes: polling card (passive) + CDP screencast (takeover).
+- app/src/components/computer/computer-view.tsx — computer view container.
+- app/src/lib/computers/screen-connection.ts — screen socket client; take-the-wheel.ts — page coordinates for input.
+- server proxies WS: server/src/http-server.ts (StreamData upstream) + server/src/computer/stream-path.ts.
+- GOD-MODE: screencast already = owner's Ultimate spec (CDP screencast, real video stream). Raise: always-on screencast (not just takeover), quality/FPS knobs in agent-computer/src/screencast.ts.
+
+## 2026-10-29 22:10 — serve bind + misc
+- server/src/http-server.ts:94 — serve<SocketData>({ port, ... }) with NO hostname arg. Bun.serve default hostname is 0.0.0.0 per Bun docs (VERIFY at deploy; Render needs 0.0.0.0:$PORT).
+- Per-request timeouts set in fetch handler: /api/audio/transcriptions → DICTATION_HTTP_IDLE_SECONDS; /api/voice/calls + /api/voice/sessions → 30s; browser routes → browserRequestSeconds(pathname) from server/src/browser/routes.ts ("a cold open, a slow page" — kept open per route's own budget).
+- WS upgrade for /stream/<botId>: 503 "No computer is configured." when config.computer unset; session guard applied by hand on upgrade (middleware doesn't run on upgrade).
+- charts/openbot/values.yaml resource requests/limits: server 250m CPU/512Mi req → 2Gi lim (:38-41); another 100m/256Mi → 1Gi (:118-121); computer 500m/1Gi → 4Gi (:443-448); replicas: 2 (:474).
+- agent-computer image: Playwright 1.62.1 chromium --no-shell (saves ~340MB unpacked), ubuntu:24.04, bun 1.4.3.
+- app/src structure: components/ (admin, agents, app-sidebar, approvals, audit, auth, bot-profile, bots, boundaries, browser, capabilities, channels, computer, ...), hooks/, lib/, routes/, skins/. Router: routeTree.gen.ts (TanStack Router).
+
+## 2026-10-29 22:11 — computer API surface (server/src/computer/routes.ts)
+Per-bot routes (requireUser on fleet/policy):
+- GET /:botId/status, /screenshot, /read, /control; POST /navigate, /snapshot, /click, /type, /key, /scroll
+- POST /control/request|take|release|cancel, /control/secret; POST /human/secret, /human/:kind
+- GET /fleet; GET /:botId/computers; POST /computers/stop|reset|update
+- GET /:botId/page-frame/:toolCallId; POST /files/list|read|write; GET /files/download; POST /:botId/exec (SHELL)
+- GET /policy, PUT /policy, POST /policy-dry-run (STRIP per owner order)
+- agent-computer auth: x-openbot-bot-id header (index.ts:213); sessions with run renewal + viewer release on stop.
+
+## 2026-10-29 22:11 — shell caps (agent-computer/src/shell.ts)
+- DEFAULT_TIMEOUT_MS = 120_000; MIN_TIMEOUT_MS = 1_000; MAX_TIMEOUT_MS = 600_000 (10 min hard cap on a command)
+- MAX_OUTPUT_BYTES = 64 * 1024 (64KB, truncated with flag)
+- Env allow-list only: PATH, LANG/LANGUAGE, TERM/TERMINFO/COLORTERM, *PROXY vars (userinfo stripped). Everything else via COMPUTER_SHELL_ENV names.
+- "ISOLATION IS THE CONTAINER'S JOB" — shell reaches whatever the container reaches.
+- GOD-MODE: raise MAX_TIMEOUT_MS (long tasks!), MAX_OUTPUT_BYTES, widen env allow-list.
+
+## 2026-10-29 22:12 — MODEL PLUG (uncensored backend)
+- agent-bot/src/index.ts:82 — const BASE_URL = process.env.OPENAI_BASE_URL?.trim() || undefined; OpenAI SDK with baseURL override (index.ts:112-114). "Ollama, vLLM, LM Studio and llama.cpp all serve this API with no key at all."
+- keyIsRequired("openai", BASE_URL) — keyless endpoints allowed when BASE_URL names a local endpoint.
+- examples/fintech/model.yaml — tenant model config: provider openai, credential_secret_ref openai-api-key, default_model gpt-5.6-terra.
+- REBUILD: point OPENAI_BASE_URL at her uncensored OpenAI-compatible endpoint (/v1). No code change needed for the plug itself; the MODEL is outside the repo. NO system-prompt/refusal content may be added around it (owner hard constraint).
+- Tenant package: examples/fintech/ (agents.yaml, agents/, catalog/, channels.yaml, knowledge.yaml, model.yaml, skills.yaml, brand.yaml); TENANT_PACKAGE_DIR env selects it.
+- App routes: app/src/routes/__root.tsx, _authed/ (_app, admin, onboarding, settings, sign-in), sign.tsx. UI framework: React + TanStack Router (routeTree.gen.ts).
+
+## 2026-10-29 22:12 — app UI map (components/)
+- computer/: computer-view.tsx, live-screen.tsx (CDP screencast takeover view)
+- browser/, channels/, agents/, bots/, approvals/, boundaries/ (policy UI — STRIP), capabilities/, memory/, audit/, admin/
+- lib/computers/: control.ts (readControl), screen-connection.ts (connectScreen), take-the-wheel.ts, preview-visibility.ts
+
+## 2026-10-29 22:13 — misc confirmations
+- packages/ does NOT exist (task list mentioned it — not present in this checkout).
+- APP_DIST_DIR=/app/app/dist (Dockerfile:167) — server serves the built Vite app itself.
+- scripts/start.sh — starts Docker services, applies migrations, API on 3001, routine worker, app on 3010; checks health routes before printing next steps. Local dev URL http://localhost:3010.
+- README quick start: npx copilotkit@latest login → project select → bun scripts/setup-learning.ts (provisions runtime key + openbot Learning container, writes .env) → OPENAI_API_KEY → bash scripts/start.sh.
+- Intelligence self-host option exists (docs.copilotkit.ai/intelligence/self-hosting-local); free Developer plan; local licence 30 days, renewable via `npx copilotkit@latest local renew`.
+- examples/: fintech (default tenant), langgraph-bot, mastra-bot, pydantic-ai-bot.
+- desktop/ = Tauri shell (src-tauri); mobile/ = Expo app; extension/ = browser extension (OpenBot Recorder — built into agent-computer image, "the person's browser it opens").
+- spire/ = SPIRE mTLS configs (to strip per owner order).
+
+## 2026-10-29 22:14 — GOD-MODE SIZING (docs/deployment.md "Minimum size", measured on real image, arm64, one Bot)
+- Memory: 409 MB idle / 498 MB after 3 page loads / 548 MB after snapshot | Minimum 2 GB | Recommended 4 GB
+- Per extra concurrent page: ~100-200 MB; Playwright guidance ~1 GB per concurrent browser
+- vCPU: 3-6% at rest, bursty on render | min 1 | recommended 2
+- Disk: 1.4 GB image | min 4 GB | 8 GB recommended (room for /workspace)
+- Chromium launched with --disable-dev-shm-usage (writes /tmp, not /dev/shm) — 64MB shm default irrelevant
+- GOD-MODE MATH: 1000 concurrent browsers ≈ 1000 × ~1 GB ≈ 1 TB RAM → fleet of hosts, never one box. Render Free 512 MB = OOM before even 1 browser is comfortable (measured 548 MB for one bot+snapshot). Paid host needed: her order only.
+- Attachments: 32 unsent files/person cap (upload endpoint refuses 33rd), 8 MiB/file → 256 MiB staged blobs/person. Sweep: bun scripts/cull-staged-attachments.ts (Helm runs hourly, deletes >24h old).
+- Routines sweep NOT in one-container image: needs external cron / platform scheduled job / second container with SERVER_INTERNAL_URL + WORKER_SHARED_SECRET. Until then routines never fire.
+- Computer provider selection (server/src/config.ts:1200-1250): COMPUTER_SANDBOX_NAMESPACE → "sandbox" (STRIP) | COMPUTER_SUPERVISOR_URL → "docker" (per-Bot containers, needs Docker socket host) | AGENT_COMPUTER_URL → "shared" (one browser for all bots — the Render mode) | none → no computer (503 on /stream).
+- Prebuilt image: ghcr.io/copilotkit/openbot:latest (digest-pinned per release in container-images.json). `docker build -t openbot .` reproduces it.
+- EMBEDDED_POSTGRES=on + volume /var/lib/postgresql (mount the PARENT, not /var/lib/postgresql/data — lost+found breaks initdb; then api waits on postgres forever → 502 that looks like success).
+
+## 2026-10-29 22:15 — browser request budgets (server/src/browser/routes.ts)
+- STATE_TIMEOUT_MS = 8_000; OPEN_BUDGET_MS = 150_000 (browser open budget); CALL_BUDGET_MS = CALL_TIMEOUT_MS + 15_000; ANSWER_MARGIN_MS = 7_000.
+- http-server.ts applies per-route server.timeout() so long browser ops don't hit Bun's 10s default.
+- app route /_authed/_app/browser.tsx → BrowserPage: "The person's own browser, with the OpenBot Recorder in it" (personal browser, distinct from bot computers).
+- CALL_TIMEOUT_MS = 45_000 (server/src/browser/routes.ts:124)
+
+## 2026-10-29 22:16 — architecture doc (docs/architecture.md) cross-check
+- Services/ports: app 3010 | server 3001 | agent-computer 4100 | agent-bot 4200 | agent-langgraph 4201 | agent-harness 4202 | supervisor 4500 host/4300 container | postgres 5432 | Intelligence external.
+- Runtime flow: app opens channel/session → server resolves actor+coworker → CopilotKit runtime sends turn to AG-UI endpoint → frontend tools registered (browser, MCP, components granted to that Bot) → tool calls return to server for authorization+audit → server streams results to app + Intelligence thread.
+- Governance (5 steps): resolve target from server-held snapshot → evaluate action policy → audit row → call computer only if forwarded → second audit row on failure.
+- Policy inspects: tool.name, intent, bot.id, actor.id, page.url/host, element.ref/role/name/type, key, command, file.path/name/extension, mcp.server/tool/effect, initiator.kind/id.
+- CEL expressions; deny evaluated before allow; FAIL-CLOSED (missing/empty policy permits nothing; broken deny denies). SHIPPED DEFAULT: deny: [] + allow: ["true"] (permissive default rules, mode enforce).
+- agent-computer requires COMPUTER_TOKEN; only /health without it. Compose binds 127.0.0.1:4100.
+- Network split: computer on different network from postgres ("A Bot has a shell, and a shell reaches whatever its container reaches") — DB on `data` network with migrate only.
+- CORRECTION to earlier note: policy default is permissive (allow true), the "enforce" is the mode not the ruleset. Rebuild still strips the engine per owner order.
+
+## 2026-10-29 22:17 — HEADLESS TOOLS (model-facing, server/src/computer/headless-tools.ts)
+16 tools offered to the model via gateway (each → ComputerGateway → policy(STRIP) → computer :4100):
+1. computer_navigate (url) — open page, return title+readable text
+2. computer_read — read current page
+3. computer_snapshot — aria refs (fields/buttons/links) + snapshotId
+4. computer_screenshot — page image
+5. computer_click (ref, snapshotId)
+6. computer_type (ref, snapshotId, text, submit?)
+7. computer_key (key, ref?, snapshotId?)
+8. computer_scroll (deltaY, default 600)
+9. computer_list_files (path?)
+10. computer_read_file
+11. computer_write_file
+12. computer_run_command — SHELL (the everything-else tool)
+13. computer_request_help — ask the person (pauses turn; HeadlessToolSuspension)
+14. computer_request_secret — private sign-in form; computer_secret — typed straight into browser, model never sees it
+15. computer_request_sign_in — person takes over browser / private form; turn pauses until answered
+- Cold-start handling: ComputerStillStartingError → answered (not thrown) with {starting:true, notPerformed:true} so model retries instead of apologizing.
+- HumanHasControlError → HeadlessToolSuspension (turn pauses).
+- Frontend tools additionally registered in app (browser tools, MCP tools, components granted per Bot) — see toolkit/granted-tool.ts GrantedTool {name, description, parameters zod, execute, ref: "<serverId>/<toolName>"}.
+- GOD-MODE: add pip/python/git/download/upload tools as first-class (currently via computer_run_command shell); widen file tools; nothing refused.
+
+## 2026-10-29 22:18 — BROWSER CAPS (agent-computer/src/profiles.ts:291)
+- MAX_LIVE_BROWSERS = numberFromEnv("COMPUTER_MAX_BROWSERS", 8) — cap; LRU eviction (quietest Bot's browser closed first) when exceeded. Profile on disk → relaunch resumes where left off.
+- IDLE_TIMEOUT_MS = numberFromEnv("COMPUTER_BROWSER_IDLE_MS", 30*60_000) with zeroSwitchesItOff:true — 0 = keep browsers resident forever (== owner's "browser hamesha warm rakha jaye" spec).
+- IDLE_SWEEP_MS = 60_000.
+- GOD-MODE: COMPUTER_MAX_BROWSERS=64+ (RAM: ~100-200MB per live browser per docs; 8 → 64 needs ~+6-11 GB), COMPUTER_BROWSER_IDLE_MS=0 (never evict; needs RAM headroom for all resident).
+
+## 2026-10-29 22:19 — STRUCTURE MAP (1-2 lines per dir)
+- app/ — React+Vite+TanStack Router web UI (chat, channels, computer live-screen, admin, bots, settings). Served by server from /app/app/dist.
+- server/ — Bun+Hono API: auth, agents (AG-UI endpoints), computer gateway, approvals, audit, channels, routines, memory, plugins, credentials, drizzle ORM (server/drizzle). Entry: index.ts → http-server.ts (port 3001).
+- agent-computer/ — the Bot's computer: Playwright Chromium (browser-runtime.ts), CDP screencast (screencast.ts), shell (shell.ts), files (workspace.ts), sessions/profiles/cookies, sign-in flows. Serves :4100, COMPUTER_TOKEN auth.
+- supervisor/ — creates one Docker container per Bot from COMPUTER_IMAGE (docker.ts); listen-port 4300; optional gVisor (runsc); per-computer memory cap (computer-memory-bytes.ts). EXCLUDED from all-in-one image (needs Docker socket).
+- toolkit/ — turn runtime: run-turn.ts (createTurnRunner), limits.ts (TURN_LIMITS), lease.ts (lock/heartbeat), granted-tool.ts (GrantedTool), headless-tools.ts, continuation.ts, native-approval.ts, ports.ts, thread-history.ts.
+- worker/ — routines sweep loop (local stand-in for CronJob fire-routines.ts); needs WORKER_SHARED_SECRET + SERVER_INTERNAL_URL + DATABASE_URL.
+- shared/ — 47 modules: agent-authorisation, computer-control, openbot-browser, intelligence-key, dictation, file-download, work-owner, etc. (cross-package contracts).
+- spire/ — SPIRE mTLS configs (agent.conf, server.conf). TO STRIP per owner.
+- desktop/ — Tauri desktop shell (src-tauri). mobile/ — Expo app. extension/ — browser extension (OpenBot Recorder, bundled into agent-computer image).
+- charts/ — Helm chart (openbot): computer warmPool/statefulset (K8s sandbox mode), values.yaml resource requests/limits.
+- docker/ — s6 service defs for the all-in-one image (api, computer, migrate, postgres...).
+- scripts/ — 22 scripts: start.sh, setup-learning.ts, fire-routines.ts, cull-staged-attachments.ts, generate-app-config.ts, etc.
+- examples/ — tenant packages: fintech (default), langgraph-bot, mastra-bot, pydantic-ai-bot. agent-*/ — one example bot per framework (adk, ag2, agno, antigravity, bot, claude-sdk, crewai, langgraph, langgraph-agui, langroid, llamaindex, mastra, microsoft, pydantic-ai, strands).
+- tests/ — root tests incl. compose.test.ts, smoke/.
+- docs/ — architecture.md, deployment.md, configuration.md, routines.md, etc.
+
+## 2026-10-29 22:20 — PERMISSIONS (child inventory, verified by me where noted)
+### Auth modes (server/src/auth/dev-actor.ts + config.ts)
+- OPENBOT_SINGLE_USER=true: no sign-in; every visitor = DEV_ACTOR (id dev-local-user, email dev@openbot.local, role admin). Only honored when NO identity provider configured.
+- CRITICAL RENDER INTERLOCK: singleUserAllowed() (config.ts:557-590) THROWS if OPENBOT_PUBLIC_URL / OPENBOT_APP_URL / TRUSTED_ORIGINS contains a public-internet address. On Render: leave those UNSET to boot single-user (anyone with the URL is admin — keep URL private), or configure OAuth.
+- OAuth (single-user off): Better Auth; Google / Microsoft Entra / Okta; needs BETTER_AUTH_URL + BETTER_AUTH_SECRET (≥32 chars) + TRUSTED_ORIGINS + INITIAL_ADMIN_EMAILS. Optional SIGNIN_ALLOWED_EMAIL_DOMAINS. Enterprise: SSO providers table, SCIM (server/src/auth/scim.ts).
+- Roles (server/src/auth/roles.ts): admin | user in user_roles table; INITIAL_ADMIN_EMAILS = permanent admin floor, re-applied each sign-in. Guards: createRequireUser, requireAdmin (~14 route files).
+
+### Per-bot permissions (layered)
+- Component grants: server/src/components/store.ts grant(name, agentId) — "A row is the permission. No row, no call." (components/sandboxed_components/component_functions tables).
+- 10 capabilities (server/src/admin/capabilities.ts): useBots, cloudBrowser, cloudNetwork, cloudComputer, localComputer, customRules, passwordManager, slackTeams, teamBots, ownerApps. Enforced by server/src/admin/gate.ts on /api/*.
+- Approval rules: approval_rules (personal) + approval_team_rules; glob on botId/toolRef/effect/scope.
+- Inter-service tokens (constant-time compared): x-openbot-agent-token (server→bot, shared/agent-authorisation.ts); x-openbot-computer-token / Bearer / ?token= on /stream (agent-computer/src/authorisation.ts; only /health open; acting paths refused while person holds wheel); supervisor Bearer token.
+
+### Gateway allow/deny (TWO layers — both to strip per owner)
+- LAYER 1 approvals: approvalService.gate() (server/src/approvals/service.ts:256), called from computer/gateway.ts:682, plugins/plugin-store/calls.ts:446, host-access/broker.ts:299, agents/handoff-tool.ts:136. Flow: validation → execution authority → prior decision → decideAction() → allow | ask (HeadlessToolSuspension, person answers) | hand_off/refuse (ApprovalRefusedError).
+- LAYER 2 policy: ActionPolicy CEL (server/src/computer/policy.ts) — deny beats allow, fail-closed, shipped default deny:[] allow:["true"].
+- decideAction() (server/src/approvals/policy.ts): (1) built-in safety: credentials/2FA/API keys, security/sharing, payments → always hand_off; (2) strictest matching rule (allow<pre_approved<ask<hand_off); (3) auto-review model judge, fails closed; (4) person default "ask before changes".
+- Config in DB: approval_preferences, approval_team_settings, approval_rules, approval_team_rules. NO env-var route for approval policy.
+
+### Key encryption + audit (KEEP — her controls)
+- KEY_ENCRYPTION_KEY (AES-GCM, server/src/credentials.ts): encrypts connector vault rows, password-manager entries, SSO config, web-bot-auth Ed25519 seed, approval run assertions.
+- audit_events table (server/src/db/schema/core.ts:431), append-only; AUDIT_RETENTION_DAYS unset = keep forever. recordAuditEvent redacts tokens/secrets/prompts by default.
+
+## 2026-10-29 22:22 — TOOLS INVENTORY (child worker 3/3 delivered; verified by me at key files)
+Total: 60 distinct static tool names + dynamic vendor set (MCP/Composio/Arcade/research as mcp__<server>__<tool>).
+
+### Browser/computer (16, model-facing, server/src/computer/headless-tools.ts:110-298)
+computer_navigate (POST /navigate), computer_read (GET /read), computer_snapshot (POST /snapshot), computer_screenshot (GET /screenshot, headless-only, not in app surface), computer_click, computer_type, computer_key, computer_scroll, computer_list_files (POST /files/list), computer_read_file, computer_write_file, computer_run_command (POST /exec -> agent-computer/src/shell.ts:210 createShell().run -> /bin/bash -c), computer_request_help (POST /control/request, person handoff), computer_request_secret (POST /control/secret), computer_secret (typed into browser, model never sees it), computer_request_sign_in (conditional, headless-tools.ts:255-258), report_refusal (conditional on auditStore, line 299 — model REPORTS a refusal; not a refusal rule itself).
+- agent-computer/src/index.ts:1582 — bot action set ACTIONS = {"/click","/type","/key","/scroll"}.
+- agent-computer/src/workspace.ts:196 — createWorkspace(): list (recursive), read, write, download (no upload at this layer; uploads are app-side).
+
+### Lifecycle / follow-up (3, server/src/agents/wake-up.ts)
+schedule_follow_up, list_follow_ups, cancel_follow_up.
+
+### Memory (4, server/src/memory/tools.ts)
+recall_personal_memory, remember_personal_fact, save_observed_memory, forget_personal_memory.
+
+### App access (1, server/src/plugins/app-access-tool.ts; name const shared/connect-prompt.ts:85)
+show_app_access.
+
+### Responsibilities (8, server/src/responsibilities/tools.ts)
+create_responsibility, list_responsibilities, update_responsibility, report_responsibility_progress, run_responsibility, pause_responsibility, resume_responsibility, complete_responsibility.
+
+### Handoff / escalation (2, server/src/agents/handoff-tool.ts:44, server/src/agents/escalation.ts:32)
+message_bot, ask_person.
+
+### Host access (5, server/src/host-access/tools.ts)
+host_list_folders (always offered), host_list_files, host_read_file, host_write_file, host_run_command (last four only when connected + grants; write/run owner-confirmed).
+
+### Builtin routines + triggers (9, transport builtin://routines, catalogue key routines -> mcp__routines__<tool>)
+Routines (server/src/plugins/builtin-routines.ts): create_routine, list_routine update, list_routines, update_routine, delete_routine. Triggers (server/src/responsibilities/trigger-tools.ts): create_trigger, list_triggers, pause_trigger, resume_trigger, delete_trigger.
+
+### Display components (12, server/src/components/headless.ts:276)
+showAreaChart, showBarChart, showLineChart, showPieChart, showProgress, showRecord, showMetrics, showChecklist, showNotice, showTable, showQuote, showActivityReport.
+(GOD-MODE: owner display stays; no refusal layer between model output and user.)
+
+### Vendor (dynamic, grant-dependent)
+Any MCP/Composio/Arcade catalogue server as mcp__<server>__<tool>; research providers via shared/research.ts RESEARCH_TOOLS (parallel -> web_search/web_fetch; exa -> web_search_exa/web_fetch_exa; firecrawl -> firecrawl_search/firecrawl_scrape). Count UNVERIFIED as static list (deployment-dependent).
+
+### Tools caveats
+- Which of the 60 a Bot is actually offered depends on grants, narrowing (selection), canUseComputer, handoff config, catalogue grants — see loadToolsForActor, HeadlessToolsMiddleware, offeredFor in server/src/copilot.ts.
+- toolkit/src/headless-tools.ts:234 openbot.headless.waiting is an AG-UI custom EVENT, not a callable tool.
+- worker/ and supervisor/ have no model-facing tool defs of their own.
+- GOD-MODE: promote pip/python/git/download/upload to first-class tools (today via computer_run_command); widen file tools; nothing refused.
+
+## 2026-10-29 22:22 — last strip-inventory observations (endpoint.ts, challenge.ts, agent-bot)
+- server/src/agents/endpoint.ts:20,66-92 — SSRF never-allowed list (cloud metadata 169.254.169.254 refused at registration). Classification: ANTI-EXPLOIT, not user-facing rule; owner call on strip (recommend KEEP).
+- server/src/agents/endpoint.ts:274 — "Reporting must never be able to stop a refusal" (about the never-allowed refusal reporting path). Internal robustness comment; not model censorship.
+- agent-computer/src/challenge.ts — classifies browser challenges (Cloudflare / human-verify / captcha image-select) and asks the PERSON to complete them in the browser then hand control back. NOT a refusal — it's detection. GOD-MODE: route challenges to the bot's own browser action loop (complete itself like Muse does) instead of person-handoff-only; keep classifier.
+- agent-bot/src/index.ts:89 — "refuses to start without its provider's key" = MODEL AUTH config (needs OPENAI_API_KEY or keyless local endpoint), NOT content refusal. Not a censorship mechanism.
+- agent-bot/src/index.ts:67 — refuses function tools if the endpoint refuses function tools (API capability negotiation). Correct passthrough, not censorship.
+- server/src/computer/headless-tools.ts:299 report_refusal — tool for the model to REPORT a refusal to the audit store. KEEP as refusal-visibility for owner; with no refusal rules upstream, it should never fire.
+- CONFIRMED (again): zero moderation/guardrail/toxicity/output-clamp code anywhere in server/src + shared + agent-computer. Nothing on the model-output path to strip; rebuild must ADD nothing there.
+
+## 2026-10-29 22:23 — check wrap-up
+- All 10 ordered checks done: structure(19:19), tunnel(22:05-22:10), pipeline(22:08), tools(60 + dynamic), permissions(child 2), limits(child 1), god-level math, preview(EXISTS), loops, Render env.
+- Hard constraints recorded: uncensored model (22:06) + strip all sandboxes/refusals (22:07).
+- Full check + notes COMPLETE. No code modified (read-only: greps + head reads). ONE-BATCH rebuild waits on owner go-ahead.
+
+=== FULL GOD-LEVEL SPEC (from-zero sweep) ===
+
+Sweep run 2026-10-29 ~22:30 PKT @ 4766e42. Each item: file:line | current | god-level | cost/break | safe-to-max.
+
+## AREA: BROWSER SPEED (agent-computer, supervisor)
+
+From-zero sweep of `agent-computer/src` (42 files) and `supervisor/src` (9 files), commit 4766e42.
+Scope note: HTTP status codes (400/404/409/...) excluded — protocol, not tunable. Viewport pixels and
+Chrome version strings excluded except where they set an encode budget. Challenge/captcha detection
+(challenge.ts) is event-driven (`cfMitigated` flag + DOM signals) — there is no polling interval to raise.
+
+---
+
+### 1. Browser fleet caps
+
+- `agent-computer/src/profiles.ts:291` | COMPUTER_MAX_BROWSERS = **8** (env `COMPUTER_MAX_BROWSERS`, no upper bound in `numberFromEnv`) | god: **32–64** (host-RAM permitting) | what breaks if raised: each resident Chromium ≈ 300–500 MB RSS; 8 → ~2.4–4 GB, 64 → ~20–32 GB → host OOM-kill, and supervisor sets **no Docker memory cap by default** (see item 55) | safe-to-max: **conditional** — only with an explicit `COMPUTER_MEMORY_BYTES` cap and measured RAM
+- `agent-computer/src/profiles.ts:303` | COMPUTER_BROWSER_IDLE_MS = **30 min** (env, `zeroSwitchesItOff`) | god: **5 min** (aggressive reclaim) or keep 30 min with cap raised | raised = browsers sit resident longer, RAM held idle; lowered = more cold launches (~5–30 s each) | safe-to-max: **conditional** — raising is safe only if the cap above is raised too; the two are coupled
+- `agent-computer/src/profiles.ts:308` | IDLE_SWEEP_MS = **60 s** | god: **10–15 s** | sweep walks a map of ≤ MAX_LIVE_BROWSERS entries — CPU cost ~zero; raising delays reclamation by up to the sweep period | safe-to-max: **yes**
+- `agent-computer/src/profiles.ts:243` | LAUNCH_WAIT_MS = **30 s** (close-request waits for racing launch) | god: **120 s** | raising pins a close/reset caller longer on slow hosts; lowering aborts closes of still-starting browsers | safe-to-max: **conditional**
+- `agent-computer/src/profiles.ts:216` | CLOSE_SETTLE_MS = **2 s** | god: **10 s** | raising delays teardown path; lowering risks killing before profile flush | safe-to-max: **conditional**
+- `agent-computer/src/profiles.ts:234` | ANNOUNCE_BUDGET_MS = **2 s** (onClosed callbacks + session-cookie save on evict/shutdown) | god: **5 s** | raising delays shutdown; lowering risks losing cookie writes | safe-to-max: **conditional**
+- `agent-computer/src/profiles.ts:224` | PAGE_CHANGE_SETTLE_MS = **500 ms** (debounce on page-changed announcements) | god: **0–100 ms** | trivial CPU; raising delays UI updates for the person | safe-to-max: **yes**
+- `agent-computer/src/sessions.ts:80` | session map cap = **32** (`options.cap ?? 32`) | god: **256** | each session is a small object; sweep drops idle ones — memory trivial | safe-to-max: **yes**
+- `agent-computer/src/browser-eviction.ts` | eviction policy itself: LRU, newest never evicted, person's native window goes last; idle cutoff `idleTimeoutMs <= 0` disables sweep | god: unchanged logic, just tighter numbers above | — | safe-to-max: n/a (policy)
+
+### 2. Screencast / preview (live screen path)
+
+- `agent-computer/src/screencast.ts:174-178` | JPEG **quality 70**, maxWidth **1280**, maxHeight **800**, **everyNthFrame 1** | god: quality **50**, max **1920×1200**, everyNthFrame **2** | raising res/quality → Chrome encode CPU + WebSocket bandwidth scale ~linearly with pixels; 1280×800@70 ≈ 60–150 KB/frame; everyNthFrame 2 halves both FPS and bandwidth at the cost of motion smoothness | safe-to-max: **conditional** — bandwidth per viewer; fine on LAN, dangerous on metered links
+- `agent-computer/src/index.ts:751` | `startScreencast(target, send)` called with **no options** → inherits the 1280×800/q70 defaults above | god: pass `{ quality: 50, everyNthFrame: 2 }` for fleet-wide savings | same costs as above | safe-to-max: **conditional**
+- `agent-computer/src/index.ts:594` | FOLLOW_INTERVAL_MS = **1 s** (re-attach follow loop per viewer) | god: **250 ms** | trivial CPU; lowering improves takeover responsiveness (human input reflected faster) | safe-to-max: **yes**
+- `agent-computer/src/index.ts:1283` | `/screenshot` returns **PNG**, viewport from `profiles.ts:71` VIEWPORT **1280×800** | god: JPEG q60 or lower res | PNG screenshots are 0.5–3 MB each vs ~100 KB JPEG — bandwidth + model token cost; raising viewport raises both | safe-to-max: **conditional**
+- `agent-computer/src/profiles.ts:71` | VIEWPORT = **1280×800** | god: **1920×1080** | renderer RAM + encode cost per browser; 1080p ≈ 2× pixels of 800p | safe-to-max: **conditional**
+- `agent-computer/src/browser-host.ts:55` | VISIBILITY_MS = **1 s** (per-page visibility/focus race budget) | god: **250 ms** | lowering speeds `/browser/state` answers; raising slows them on hung pages | safe-to-max: **yes**
+- `agent-computer/src/browser-host.ts:67` | STATE_ANSWER_MS = **5 s** (504 "not answering" budget) | god: **15–20 s** on loaded hosts | raising holds HTTP connections longer; lowering false-positives "not answering" on busy renderers | safe-to-max: **conditional**
+- `agent-computer/src/browser-host.ts:73` | RECORDER_REPORT_MS = **3 s** (stateOf budget incl. recorder report) | god: **10 s** | same trade as above | safe-to-max: **conditional**
+- `agent-computer/src/browser-host.ts:103` | ERROR_PAGE_MS = **2 s** (poll for chrome-error page after failed nav) | god: **5 s** | trivial CPU (busy poll); raising delays error-page detection | safe-to-max: **yes**
+- `agent-computer/src/viewer.ts:12` | STOP_BUDGET_MS = **5 s** (cast stop before teardown moves on) | god: **10 s** | raising delays teardown; lowering leaks zombie casts | safe-to-max: **conditional**
+- `agent-computer/src/virtual-display.ts:24-25` | READY_BUDGET_MS = **5 s**, STOP_BUDGET_MS = **2 s** (Xvfb, headed mode only) | god: **15 s / 5 s** | raising slows headed boot path; lowering fails slow Xvfb starts | safe-to-max: **conditional**
+
+### 3. Shell / file tools
+
+- `agent-computer/src/shell.ts:26-29` | shell DEFAULT_TIMEOUT **120 s**, MIN **1 s**, MAX **600 s** (10 min, hard) | god: max **3600 s** | raising lets a hung/long command hold a slot + output buffer; CPU/RAM bounded by MAX_OUTPUT below, but a 1 h `sleep` occupies a request slot | safe-to-max: **conditional**
+- `agent-computer/src/shell.ts:37` | MAX_OUTPUT_BYTES = **64 KB** | god: **1–4 MB** | RAM trivial; the real cost of raising is **model token cost** — output goes to the Bot | safe-to-max: **conditional**
+- `agent-computer/src/request-validation.ts:11-14` | EXEC_DEFAULT_TIMEOUT_MS **120 s**, MIN **1 s**, MAX **600 s** (validation mirror of shell) | god: max **3600 s** | must change with shell.ts — they are validated in lockstep | safe-to-max: **conditional**
+- `agent-computer/src/real-browser.ts:93,95` | COMMAND_MS = **15 s**, OUTPUT_LIMIT = **16 KB** (native browser helper commands) | god: **60 s / 256 KB** | longer helper commands hold the caller; output goes to logs | safe-to-max: **conditional**
+- `agent-computer/src/workspace.ts:94-97` | DEFAULT_WORKSPACE_LIMITS: readBytes **64 KB**, writeBytes **1 MB**, listEntries **500**, downloadBytes **100 MB** | god: read **1 MB**, write **10 MB**, list **5000**, download **1 GB** | raising download to 1 GB risks disk fill + multi-minute transfers; read/write/list raising is cheap but feeds model context | safe-to-max: **conditional** — raise read/write/list freely-ish; download cap is a disk/bandwidth guard
+- `agent-computer/src/workspace.ts:381` | MAX_LINK_HOPS = **32** (symlink resolution; Linux gives up at 40) | god: **64** | symlink-loop CPU; >40 diverges from kernel behavior | safe-to-max: **no** (keep ≤ 40)
+- `agent-computer/src/person-launch.ts:503` | MAX_HOST_MANIFEST_BYTES = **64 KB** | god: **1 MB** | trivial; manifests are tiny | safe-to-max: **yes**
+- `agent-computer/src/secret-masking.ts:98` | masking evaluate timeout = **1 s** | god: **5 s** | raising delays snapshot path on pathological pages | safe-to-max: **conditional**
+
+### 4. Snapshot / text extraction (model-context costs)
+
+- `agent-computer/src/index.ts:185` | TEXT_EXTRACT_LIMIT = **6000** UTF-16 code units | god: **50 000** | **the dominant cost is model tokens**, not CPU/RAM; raising 8× multiplies per-snapshot context | safe-to-max: **conditional** — only with a model/context budget to match
+- `agent-computer/src/aria-snapshot.ts:21` | SNAPSHOT_ELEMENT_LIMIT = **200** elements | god: **2000** | same token-cost scaling | safe-to-max: **conditional**
+- `agent-computer/src/aria-snapshot.ts:84` | OPTION_LIMIT = **50** (select options listed) | god: **500** | token cost | safe-to-max: **conditional**
+- `agent-computer/src/aria-snapshot.ts:199,205,261` | element name/value/option-name cut at **200** code units | god: **1000** | token cost | safe-to-max: **conditional**
+- `agent-computer/src/challenge.ts:88` | challenge signal body text sliced to **20 000** chars | god: **100 000** | token cost on challenge pages | safe-to-max: **conditional**
+
+### 5. Sessions / profiles / cookies / control
+
+- `agent-computer/src/session-cookies.ts:31` | SESSION_COOKIE_SAVE_MS = **30 s** (cookie persist interval while browser runs) | god: **10 s** | trivial disk churn; raising risks losing the last N minutes of sign-ins on crash | safe-to-max: **yes**
+- `agent-computer/src/control.ts:35-36` | HELP_REQUEST_TTL_MS = **10 min** (= SECRET_REQUEST_TTL_MS) | god: **60 min** | longer TTL keeps interrupted-request page URLs alive; memory trivial | safe-to-max: **yes**
+- `agent-computer/src/control.ts` persist() | request records: **30-day** cutoff, keep latest **33**; aliases keep latest **256** | god: 365 days / 1000 / 1024 | disk trivial | safe-to-max: **yes**
+- `agent-computer/src/control.ts:362,478` | handoff reason/label sliced to **500** chars; toolCallId ≤ **200** | god: 2000 / 500 | trivial | safe-to-max: **yes**
+- `agent-computer/src/control-store.ts:40` | MAX_REQUEST_URL = **2048** | god: **8192** | trivial | safe-to-max: **yes**
+- `agent-computer/src/control-store.ts:51,61,88` | validation: id/toolCallId ≤ **200** chars, aliases ≤ **256** | god: 1000 / 1000 / 1024 | trivial | safe-to-max: **yes**
+- `agent-computer/src/action-barrier.ts:28` | `drain(timeoutMs = 30_000)` default | god: **120 s** | raising holds human-takeover grant longer on stuck actions; `drainTimeoutMs` is caller-supplied (control.ts:44,381) with no default at the call site | safe-to-max: **conditional**
+- `agent-computer/src/web-bot-auth.ts:29` | SIGNATURE_LIFETIME_MS = **60 s** | god: **300 s** | security trade-off (replay window), not perf | safe-to-max: **conditional** (security, not resources)
+- `agent-computer/src/native-browser.ts:48,50,52` | LAUNCH_MS = **180 s** (CDP connect + first page), CLOSE_MS = **20 s**, LOG_LINES = **20** | god: 300 s / 60 s / 200 | raising launch/close budgets pins callers; log lines trivial | safe-to-max: **conditional** for timeouts, **yes** for log lines
+
+### 6. Navigation / action / sign-in latency path
+
+- `agent-computer/src/index.ts:167` | NAVIGATION_TIMEOUT_MS = **30 s** (env, unbounded above) | god: **60–120 s** | raising holds nav requests on slow sites; lowering fails heavy pages | safe-to-max: **conditional**
+- `agent-computer/src/index.ts:176` | ACTION_TIMEOUT_MS = **10 s** (env, unbounded above) | god: **30 s** | every Playwright action (click/fill/press/wheel) waits up to this — the single biggest click-latency lever; raising slows failure detection | safe-to-max: **conditional**
+- `agent-computer/src/navigation.ts` | `page.goto` uses `waitUntil: "domcontentloaded"` + the nav timeout above; no separate retry loop — **retries = 0** | god: keep 0 retries, raise timeout instead | retries would multiply load time on failing sites | safe-to-max: n/a
+- `agent-computer/src/sign-in.ts:54` | STEP_TIMEOUT_MS = **15 s** (every login fill/click/wait) | god: **30 s** | slow login pages benefit; raising delays failure | safe-to-max: **conditional**
+- `agent-computer/src/sign-in.ts` settle() | post-submit: `waitForTimeout(800)` + load **15 s** + networkidle **5 s** | god: 2 s / 30 s / 15 s | networkidle wait is the honest cost of JS-heavy logins | safe-to-max: **conditional**
+- `agent-computer/src/sign-in.ts:306` | code-submit settle `waitForTimeout(2_000)` | god: **5 s** | trivial | safe-to-max: **yes**
+- `agent-computer/src/page-network.ts:350` | CHILD_SETUP_BUDGET_MS = **2 s** (cross-site frame user-agent override) | god: **10 s** | raising delays frame setup; the frame is released regardless | safe-to-max: **conditional**
+- `agent-computer/src/egress.ts:701` | CONNECT_ATTEMPT_TIMEOUT_MS = **3 s** per resolved address (happy-eyeballs walk) | god: **10 s** | multi-address hosts multiply worst case (N addresses × timeout); raising slows failover | safe-to-max: **conditional**
+- `agent-computer/src/index.ts:1656` | `/scroll` default deltaY = **400 px** | god: **1200 px** | trivial | safe-to-max: **yes**
+- `agent-computer/src/index.ts:1738` | mouse-wheel route default deltaY = **600 px** | god: **1200 px** | trivial | safe-to-max: **yes**
+
+### 7. Recorder
+
+- `agent-computer/src/recorder-launcher.ts:45,47,49,50` | WORKER_START_MS **10 s**, CALL_MS **15 s**, READY_MS **2 s**, POLL_MS **100 ms** | god: 30 s / 30 s / 5 s / 50 ms | POLL_MS is a busy poll — lowering to 50 ms doubles wakeups (still trivial); raising timeouts delays "recorder unavailable" | safe-to-max: **yes** for POLL_MS, **conditional** for the timeouts
+- `agent-computer/src/recorder-launcher.ts:167` | worker wake throttle **1 s** | god: **250 ms** | trivial | safe-to-max: **yes**
+- `agent-computer/src/recorder-launcher.ts:406` | `call("state", undefined, 5_000)` | god: **15 s** | raising delays state reads | safe-to-max: **conditional**
+
+### 8. Supervisor / docker
+
+- `supervisor/src/docker.ts:55-63` | COMPUTER_HEALTHCHECK: Interval **2 s**, Timeout **3 s**, StartPeriod **2 s**, Retries **30** (nanoseconds) | god: interval **1 s**, retries **60** | each probe forks `bun -e fetch(localhost:4100/health)` — small CPU per probe; raising retries extends worst-case boot wait to 60×interval | safe-to-max: **conditional**
+- `supervisor/src/docker.ts:74` | ATTEMPTS = **2** (ensure build retries; "one retry") | god: **3–5** | retrying a failing build storms the Docker daemon; the comment says a 2nd loss means something else is wrong | safe-to-max: **conditional**
+- `supervisor/src/docker.ts:340` | DEFAULT_READY_TIMEOUT_MS = **60 s** (`waitUntilAnswering`) | god: **300 s** for slow image pulls | holds the ensure HTTP connection; raising delays "not answering" errors | safe-to-max: **conditional**
+- `supervisor/src/docker.ts:377,584` | `pause(250)` poll cadence (health wait + post-race retry) | god: **100 ms** | trivial | safe-to-max: **yes**
+- `supervisor/src/docker.ts:466` | PidsLimit = **512** (HostConfig) | god: **2048** | raising widens fork-bomb headroom per computer container | safe-to-max: **conditional** (security)
+- `supervisor/src/computer-memory-bytes.ts` + `supervisor/src/index.ts:67-72` | **COMPUTER_MEMORY_BYTES unset → NO memory cap** (Docker `Memory` omitted) | god: **set explicit, e.g. 8 GiB (8589934592)** | **this is the load-bearing missing cap**: with MAX_LIVE_BROWSERS raised and no cap, the fleet can OOM the host; cgroup cap is the only hard backstop | safe-to-max: **conditional** — set it, but size to host RAM minus headroom
+- `supervisor/src/index.ts:50` | supervisor listen PORT default **4300** (`listenPort`) | god: unchanged | not a perf lever | safe-to-max: n/a
+- `supervisor/src/index.ts:178` | `serve({ idleTimeout: 120 })` — **120 s** HTTP idle timeout | god: **600 s** | raising holds idle keep-alive connections (FDs, trivial) | safe-to-max: **yes**
+- `agent-computer/src/index.ts:704` | computer's own `serve({ idleTimeout: 120 })` — **120 s** | god: **600 s** | same | safe-to-max: **yes**
+- `supervisor/src/names.ts:16` / `agent-computer/src/bot-id.ts` | MAX_BOT_ID = **64** chars | god: **128** | trivial | safe-to-max: **yes**
+
+### 9. Take-over behavior (no constant — structural)
+
+- `agent-computer/src/viewer.ts` claim model: **one cast per Bot**; a second `/stream` **supersedes** (does not close) the first socket. No frame-rate or viewer-count constant exists — N viewers = N casts would each cost a full Chrome encode; currently impossible by design (1 cast max).
+- Human take-over input path: CDP `Input.dispatchMouseEvent/KeyEvent/insertText` per message — **no batching, no debounce, no throttle** constant exists. Each keystroke/mouse event is one CDP round trip; under latency this is the input-lag lever, and there is nothing to raise — batching would be a code change, not a constant.
+
+---
+
+**Item count: 71 raisable constants/behaviors.**
+
+**Most impactful 5:**
+
+1. **`COMPUTER_MAX_BROWSERS` = 8** (profiles.ts:291) — the fleet-size lever; each Chromium ≈ 300–500 MB. Raising without a memory cap is the fastest path to host OOM.
+2. **No default `COMPUTER_MEMORY_BYTES` cap** (supervisor/computer-memory-bytes.ts) — the missing guardrail that makes #1 dangerous; god move is setting an explicit cap (e.g. 8 GiB), not raising a number.
+3. **Screencast encode budget: 1280×800, JPEG q70, everyNthFrame 1** (screencast.ts:174-178, invoked with no overrides at index.ts:751) — per-viewer CPU encode + bandwidth; halving quality or doubling everyNthFrame is the cheapest fleet-wide bandwidth win.
+4. **`ACTION_TIMEOUT_MS` = 10 s** (index.ts:176) — applied to *every* Playwright action; the single biggest click/type latency lever in the god direction (30 s), at the cost of slower failure detection.
+5. **`TEXT_EXTRACT_LIMIT` = 6000 / `SNAPSHOT_ELEMENT_LIMIT` = 200** (index.ts:185, aria-snapshot.ts:21) — not CPU/RAM but **model-token cost**: raising these multiplies per-action context spend, which dominates operating cost at fleet scale.
+
+
+## AREA: UI MOVEMENT SPEED (app)
+
+Repo: ~/workspace/projects/OpenBot (commit 4766e42) — UI package `app/` only (React+Vite+TanStack Router). Analysis only, no code edited. 746 .ts/.tsx/.css files scanned; 34 files with timers; all `setInterval`/`setTimeout`/`requestAnimationFrame`/motion `duration`/CSS timings catalogued. Convention: god-level values = speed-optimal (lower latency, faster refresh); "breaks/costs if raised" = what degrades if you push past god-level further.
+
+### Live-screen / browser preview (the money section)
+
+- src/components/computer/computer-view.tsx:256 | `intervalMs` default 1000 (screenshot poll) | god: 250 | raising: each poll is a base64 screenshot fetch + main-thread decode (`preloadFrame`); 4Hz × N open viewers = network + decode CPU storm, and the server rate-limits the screenshot route | safe-to-max: conditional (OK only while 1–2 humans watch; the settle-guard `SETTLED_FRAMES`/`SETTLE_TIMEOUT_MS` stops the storm once the page goes still)
+- src/components/computer/live-screen.tsx:270+ (WS screencast) | no UI-side frame-rate cap; frames drawn per message as they arrive (server's casting handler sets FPS); input forwarded straight to socket with zero UI debounce/throttle (key/click `socket.send` inline) | god: already god-level (nothing to lower) | raising: none possible — decode is `createImageBitmap` off main thread by design | safe-to-max: yes
+- src/components/computer/computer-view.tsx:391–392 | `SETTLED_FRAMES = 3` identical frames to stop post-action polling | god: 2 | raising: 1 stops polling while a page is still painting → stale frame shown as final | safe-to-max: conditional
+- src/components/computer/computer-view.tsx:114 | `SETTLE_TIMEOUT_MS = 30_000` hard cap on post-action polling for pages that never settle | god: 10_000 | raising lower: a slow/never-settling page gets abandoned earlier → "stuck" screenshot shown while bot still works | safe-to-max: conditional
+- src/components/computer/computer-view.tsx:108 | `STATUS_POLL_MS = 2_000` (pre-frame computer-state poll) | god: 500 | raising: cheap REST read that never wakes a computer; cost is pure request volume | safe-to-max: yes
+- src/components/computer/computer-view.tsx:105 | `STARTUP_GRACE_MS = 150_000` (frameless time before "stalled" badge) | god: 60_000 | raising: only changes when the stalled warning appears, zero load cost | safe-to-max: yes (cold starts can exceed 60s)
+- src/components/computer/computer-view.tsx:117 | `SECRET_CONFIRM_MS = 6_000` (poll window after a secret is sent) | god: 3_000 | raising: closes the confirm window early on slow login pages → polling stops while page still loading | safe-to-max: conditional
+- src/components/computer/computer-view.tsx:55 | `MAX_REMEMBERED_TURNS = 40` (kept turn frames per computer) | god: 80 | raising: base64 frames held in memory (each ~100KB–1MB) → tab memory growth | safe-to-max: conditional
+- src/lib/computers/screen-connection.ts:28 | `BACKOFF = [500, 1000, 2000, 4000, 8000]` (live-screen WS reconnect ladder, 5 attempts then error overlay) | god: [250, 500, 1000, 2000, 4000] | raising: faster reconnect but more attempts/sec during an outage; a dying server gets hammered | safe-to-max: conditional
+- src/lib/computers/screen-connection.ts:77 | backoff resets on first `frame` message — already speed-optimal | god: keep | safe-to-max: yes
+- src/components/computer/needs-you.ts:8 | `INTERVAL_MS = 3_000` (control/secret-prompt poll on closed screens) | god: 1_000 | raising: cheap REST read per bot | safe-to-max: yes
+- src/lib/computers/use-control.ts:118 | control-store refresh `setInterval(..., 1000)` while subscribed | god: 500 | raising: read per active subscription; cheap | safe-to-max: yes
+- src/lib/computers/host-access.ts:55 | `refetchInterval: 2_000` (folder-access status) | god: 500 | raising: trivial request volume | safe-to-max: yes
+- src/lib/computers/activity.ts:44 | `LIMIT = 200` (per-computer activity log entries) | god: 500 | raising: DOM rows per computer panel; bounded memory | safe-to-max: yes
+- src/lib/browser/queries.ts:14,21 | `BROWSER_POLL_MS = 1000`, `BROWSER_CLOSED_POLL_MS = 30_000` (own-browser sidebar/page state) | god: 500 / 5_000 | raising: wakes the Recorder extension's service worker more often when closed → browser battery/process cost | safe-to-max: conditional
+- src/lib/recorder/queries.ts:41,45,89 | awaiting-Recorder 2000ms, `AWAITING_POLL_MS = 2000`, `CONNECT_WAIT_POLL_MS = 1000` | god: 500 / 500 | raising: keeps the Recorder extension's service worker awake; idle-browser CPU | safe-to-max: conditional
+- src/lib/recorder/bridge.ts:53 | `DEFAULT_DETECT_TIMEOUT_MS = 1500` (extension detect) | god: 500 | raising: may conclude "no extension" before a slow browser answers | safe-to-max: conditional
+- src/components/plugins/app-access-action.tsx:272,373 | 2_000ms full-app query invalidations while a consent waits in the other tab | god: 1_000 | raising: invalidating ALL app-access queries per tick = refetch storm of every row | safe-to-max: conditional
+- src/components/plugins/connect-in-new-tab.ts:62 | 1_000ms poll for "did the person come back from the connect tab" | god: 500 | raising: trivial | safe-to-max: yes
+
+### Animations / transitions
+
+- src/components/layout/detail-panel.tsx:18,28 | `ANIMATION_DURATION_SECONDS = 0.3`, `CONTENT_ENTRANCE_DELAY_SECONDS = 0.12` | god: 0.15 / 0 | raising: instant = jarring layout jumps; fine | safe-to-max: yes
+- src/components/channels/chat-transcript.tsx:436–437 | `FIRST_PAINT_STAGGER_COUNT = 12`, `FIRST_PAINT_STAGGER_SECONDS = 0.04` (440ms cascade on first paint of history) | god: 8 / 0.02 | raising: 0 = all rows mount at once → one long main-thread jank instead of smooth cascade | safe-to-max: conditional
+- src/components/channels/chat-transcript.tsx:1553 | `SEND_SCROLL_MS = 700` (smooth-scroll behavior window after own message) | god: 400 | raising lower: scroll snaps instead of gliding; cost is none | safe-to-max: yes
+- src/lib/typed-reveal.ts:11–12 | `TYPING_SECONDS_PER_CHARACTER = 0.014`, `TYPING_MAX_SECONDS = 0.45` (sidebar name typewriter via rAF) | god: 0.007 / 0.25 | raising: reads as a glitch rather than typing | safe-to-max: yes
+- src/components/agents/orb/agent-orb.tsx:63–67 | `SPRING_DEFAULT = { bounce: 0.1, duration: 0.25 }`; `ERROR_SHAKE_DURATION = 0.18`; ambient `DRIFT_BASE_SECONDS = 12`, `BREATHE_SECONDS = 5.5` | god: 0.15 / 0.10 | raising ambient below ~3s = visibly frantic orb, continuous GPU compositing | safe-to-max: conditional (state changes OK to 0.15; leave ambient ≥8s)
+- src/components/ui/live-waveform.tsx:91–94 | rAF canvas loop throttled to 30ms redraws (120ms under reduced motion) | god: 16ms (60fps) | raising: canvas redraw cost per tick; waveform is tiny → cheap | safe-to-max: yes
+- src/components/agents/orb/ai-core.tsx:259 | `DEFAULT_FFT_SIZE = 512` (mic amplitude analyser) | god: 256 | raising lower: coarser frequency resolution → jittery orb | safe-to-max: conditional
+- src/components/agents/new-bot-sheet.tsx:481–483 | `CREATED_BEAT_MS = 1600` / `CREATED_BEAT_REDUCED_MS = 900` (post-create redirect beat) | god: 800 / 500 | raising: navigating before the sheet's close animation finishes = visual pop | safe-to-max: conditional
+- src/components/agents/new-bot-sheet.tsx:350,507,519,528 | motion durations 0.2 / 0.7 spring / 0.5, delays 0.3 / 0.45 | god: halve all | raising: none | safe-to-max: yes
+- src/routes/_authed/_app/bots.index.tsx:10 | `SHEET_CLOSE_MS = 240` (navigate-after-sheet-close delay) | god: 120 | raising: 0 = sheet vanishes instead of sliding (see its own comment) | safe-to-max: conditional
+- src/routes/_authed/onboarding.tsx:361,364 | onboarding motion `duration: 0.5` (×2) | god: 0.25 | raising: none | safe-to-max: yes
+- src/components/onboarding/laptop-illustration.tsx:24,32 | delays 0.35/1.0, durations 0.9/0.6 | god: halve | raising: none (one-time onboarding) | safe-to-max: yes
+- src/components/onboarding/intro-animation.tsx:12 | scene rotation `setInterval(..., 4000)` | god: 2500 | raising: too fast = unreadable scenes | safe-to-max: conditional
+- src/components/computer/desktop-illustration.tsx:40 | ambient `duration: 10` loop | god: keep (ambient) | safe-to-max: no
+- src/components/ui/toast.tsx:116 | CSS `duration-250` opacity transition on toast stack | god: 150ms | raising: none | safe-to-max: yes
+- src/components/ui/toast.tsx:30–38 | error toasts get `timeout: 0` (never auto-dismiss); all others use Base UI default | god: keep errors at 0 | raising: auto-dismissing errors hides failures | safe-to-max: no (errors must stay 0)
+- src/styles.css:43 | `tool-line-sweep 1.6s linear infinite` (tool activity shimmer) | god: 0.8s | raising: faster shimmer = more repaint, cosmetic | safe-to-max: yes
+- src/components/app-sidebar/app-sidebar.tsx:75 | `MAX_ANIMATED_ROWS = 60` (layout-animation cap; `layout` re-measures every animated row per reorder) | god: 30 | raising: above 60 = layout thrash on reorder | safe-to-max: no (it's already a ceiling)
+
+### Polling / refresh cadence (React Query)
+
+- src/lib/channels/use-channel-events.ts:284–285 | WS reconnect `FIRST_RETRY_MS = 500`, `MAX_RETRY_MS = 30_000` (×2 exponential) | god: 250 / 10_000 | raising: reconnect hammering during outage; invalidation storms on each reconnect | safe-to-max: conditional
+- src/lib/groups.ts:58 | group detail refetch 1_500 only while messages are `running`/`queued` | god: 750 | raising: poll storm per open group; stops itself when idle | safe-to-max: conditional
+- src/components/channels/connect-app-card.tsx:56 | `refetchInterval: waiting ? 2_000 : false` | god: 1_000 | raising: trivial | safe-to-max: yes
+- src/lib/copilot/sign-in-tool.tsx:27–28 | `WAIT_MS = 15 * 60_000` (person-answer window), `POLL_MS = 1_500` (sign-in state poll) | god: 750 poll; keep 15-min window | raising: sub-second polling of a human-time task = pure waste | safe-to-max: conditional
+- src/lib/copilot/sign-in-tool.tsx:166 | pending-sign-in lookup poll `POLL_MS` until request found | god: 750 | raising: trivial | safe-to-max: yes
+- src/components/passwords/sign-in-form.tsx:55 | sign-in request poll 3_000 until final status | god: 1_500 | raising: trivial | safe-to-max: yes
+- src/lib/copilot/computer-tools.tsx:32,35 | `WAIT_FOR_SECRET_MS = 10 * 60_000` (window), `WAIT_POLL_MS = 1_000` (control-state poll) | god: 500 poll | raising: cheap REST reads | safe-to-max: yes
+- src/lib/copilot/thread-messages.ts:60 | `THREAD_MESSAGES_DEADLINE_MS = 1500` (history-read deadline → `UNAVAILABLE_THREAD`) | god: 800 | raising: slow networks abort reads that would have succeeded | safe-to-max: conditional
+- src/lib/copilot/join-thread.ts:64 | `DETACH_GRACE_MS = 2_000` (wait for ending connect before detach) | god: 1_000 | raising: cutting off a connect mid-flight → orphaned session | safe-to-max: conditional
+- src/lib/approvals.ts:84 | approvals inbox refetch 10_000 | god: 5_000 | safe-to-max: yes
+- src/lib/bot-lifecycle/queries.ts:97,118 | 15_000 / 10_000 | god: 7_500 / 5_000 | safe-to-max: yes
+- src/lib/components/queries.ts:57 | agent components refetch 5_000 (+ refetchOnWindowFocus) | god: 2_500 | safe-to-max: yes
+- src/lib/delivery.ts:40 | reachability refetch 10_000 | god: 5_000 | safe-to-max: yes
+- src/lib/demonstrations.ts:50 | 2000 | god: 1000 | safe-to-max: yes
+- src/lib/memory.ts:56 | 15_000 | god: 7_500 | safe-to-max: yes
+- src/lib/plugins/queries.ts:536 | 15_000 | god: 7_500 | safe-to-max: yes
+- src/lib/plugins/shared-use.ts:59 | 10_000 | god: 5_000 | safe-to-max: yes
+- src/lib/proactive.ts:42,51 | 30_000 ×2 | god: 15_000 | safe-to-max: yes
+- src/lib/responsibilities.ts:66,76 | 10_000 ×2 | god: 5_000 | safe-to-max: yes
+- src/lib/routines/queries.ts:76 | 5_000 | god: 2_500 | safe-to-max: yes
+- src/lib/sandboxed/queries.ts:64 | 30_000 | god: 15_000 | safe-to-max: yes
+- src/query-client.ts:6 | global query `retry: 1`, `refetchOnWindowFocus: false` | god: retry 0 | raising: failures surface instantly with no silent retry (fail-fast UX) | safe-to-max: conditional (flaky networks suffer)
+- src/components/channels/channel-chat.tsx:477 | history refresh ladder `[0, 750, 1500]` | god: [0, 400, 800] | raising: thread-read races (the deadline above) | safe-to-max: conditional
+- src/components/channels/channel-chat.tsx:673 | voice-history load timeout 2000 | god: 1200 | raising: cold starts exceed it → falls back to cached archive | safe-to-max: conditional
+- src/components/browser/narration-choice.tsx:51 | `READ_WAIT_MS = 3_000` (narration-preference read race vs Record) | god: 1_000 | raising: falls back to "record without narration" on slow prefs read | safe-to-max: conditional
+- src/components/browser/browser-nav-item.tsx:379 + src/components/settings/browsers/this-browser.tsx:118 | `CONFIRM_WINDOW_MS = 5 * 60_000` (lib/recorder/bridge.ts:141) — confirm expiry window, not speed | god: n/a | safe-to-max: n/a
+- src/components/computer/handoff-resume-notice.tsx:64 | 1000ms handoff-status check loop | god: 500 | safe-to-max: yes
+
+### Input latency (dictation / voice / narration)
+
+- src/lib/dictation/session.ts:78 | seconds-counter `setInterval(..., 250)` while recording | god: 1000 | raising: 4Hz re-render to display a seconds counter — current 250ms is wasteful; display only changes per second | safe-to-max: yes (raise to 1000, do not lower)
+- src/lib/voice/session.ts:118 | call connect deadline 30_000 | god: 15_000 | raising: fail faster on dead connects | safe-to-max: conditional
+- src/lib/voice/session.ts:173 | call seconds timer 1000ms + hard 15-min cap | god: keep | safe-to-max: n/a
+- src/lib/browser/narration.ts:198 | `FLUSH_MS = 1_500` (wait for speech service to hand over in-progress phrase on stop) | god: 300 | raising: cuts off the trailing words of the phrase | safe-to-max: conditional
+- src/lib/browser/narration.ts:200 | `DOWNLOAD_POLL_MS = 3_000` (on-device speech model download progress) | god: 1_000 | safe-to-max: yes
+- src/lib/browser/narration.ts:203–207 | `QUICK_END_MS = 2_000`, `RESTART_FIRST_MS = 500`, `RESTART_MAX_MS = 30_000`, `NETWORK_FIRST_MS = 2_000`, `NETWORK_MAX_MS = 60_000` (Chrome speech-recognition restart backoff) | god: 1000 / 100 / 10_000 / 500 / 15_000 | raising: restart below ~100ms = tight restart loop against Chrome's own limits | safe-to-max: conditional (do not drop RESTART_FIRST below 100)
+- src/skins/openduet/orb-dictation.ts:35,74,114 | `WORKING_SETTLE_MS = 700` (orb "working" settle), `pressOrbWhenReady` default 3000ms rAF retry loop | god: 300 / 1500 | raising: may declare "working" before the composer is truly listening | safe-to-max: conditional
+- src/components/browser/recording.tsx:41 + src/components/computer/demonstration-recorder.tsx:34 | elapsed-time `setInterval(..., 1000)` | god: 1000 (already optimal) | safe-to-max: yes
+
+### Misc timers / limits
+
+- src/components/plugins/broker-directory.tsx:69 + src/routes/_authed/admin/people.tsx:80 | search debounce 250ms | god: 150 | raising: every distinct term is a vendor request → rate-limit burn | safe-to-max: conditional
+- src/components/responsibilities/triggers.tsx:124 | "Copied" reset 1500ms | god: 1000 | safe-to-max: yes
+- src/components/agents/new-bot-sheet.tsx:195 | `reduceMotion ? CREATED_BEAT_REDUCED_MS : CREATED_BEAT_MS` (see above) | god: 800/500 | safe-to-max: conditional
+- src/components/channels/composer/composer.tsx:116,121 | `MAX_HEIGHT_PX = 220`, `COMPACT_MAX_HEIGHT_PX = 96` (editor auto-grow caps) — layout, not speed | god: n/a | safe-to-max: n/a
+- src/components/channels/compose-state.ts:16 | `MAX_RECIPIENTS = 20` — cap, not speed | god: n/a | safe-to-max: n/a
+- src/lib/settings/queries.ts:12 | `INSTRUCTIONS_LIMIT = 4000` (chars) — cap, not speed | god: n/a | safe-to-max: n/a
+- src/lib/channels/route.ts:40 | `ROUTING_TEXT_LIMIT = 10_000` — cap, not speed | god: n/a | safe-to-max: n/a
+- src/lib/auth/resume.ts:23 | `MAX_FLOW_ID_LENGTH = 256` — cap | god: n/a | safe-to-max: n/a
+- src/components/browser/use-narration.ts:13 | `PHRASE_MAX = 4000` (chars per narration post) — cap | god: n/a | safe-to-max: n/a
+- src/routes/_authed/_app/connections.$key.tsx:76 | `MAX_LANDED_ACTION = 200` (chars) — cap | god: n/a | safe-to-max: n/a
+- src/components/suggestions/proactive-panel.tsx:290 | proactive check interval default 240 minutes (user setting, server-side) | god: n/a (user's own setting) | safe-to-max: n/a
+- External (not in app/, noted for completeness): `MAX_ATTACHMENTS_PER_MESSAGE`, `MAX_FILE_BYTES`, `MAX_IMAGE_BYTES` (from @openbot/shared, enforced in picked-files.ts); `MAX_DICTATION_SECONDS` (from @openbot/shared/dictation); `useMessageScroller` scroll physics from @shadcn/react/message-scroller. Not raisable from this package.
+
+### Scroll / wheel
+
+- Live screen: no scroll step/velocity constant — wheel events are forwarded to the remote browser over the socket (server/Chrome applies its own scroll physics). Nothing to raise UI-side.
+- Chat: `scroll-behavior: smooth` + `SEND_SCROLL_MS = 700` (above); `useMessageScroller` from external package (above).
+- No virtualized-list batch constants exist in app/ (no virtualization library used; chat renders full history with the 12-row first-paint stagger).
+- No tooltip/popover delay, chart refresh, presence/typing-cadence, idle-timeout, skeleton-delay, or drag-drop delay constants found in app/ (radix/Base UI defaults apply where used).
+
+
+## AREA: BACKEND (server, toolkit, worker, shared)
+
+Exhaustive from-zero sweep of CopilotKit OpenBot @ 4766e42 — backend packages only
+(server/src, toolkit/src, worker/src, shared/). READ ONLY; no code touched.
+Swept: every top-level numeric `const`, every env-default numeric, every
+repeatAfterEach/setInterval cadence, every inline timer/backstop, every size/count/TTL cap.
+"God-level" = the value a no-compromise god-mode deployment would want.
+"Breaks/costs if raised" is honest about RAM/CPU/bandwidth/model-context cost.
+
+### A. Turn / agent speed (timeouts, stalls, watchdogs, tool steps)
+
+1. toolkit/src/limits.ts:14 | TURN_LIMITS.turnTimeoutMs = 5min (300_000ms) | god: 30min | breaks: model cost (a wedged turn burns tokens for 30min instead of 5), lease/queue stalls, browser sessions held open; cost is model-context spend, not RAM | safe-to-max: conditional (raise only with per-run cost caps and stall-guard on)
+2. toolkit/src/limits.ts:22 | abortGraceMs = 5_000ms | god: 15_000ms | breaks: near-zero; only delays settling of turns stuck in build() | safe-to-max: yes
+3. toolkit/src/limits.ts:120-lockTtlSeconds | lockTtlSeconds = 120s | god: n/a | breaks: platform FIXED at 120s on the Intelligence side (apps/app-api thread-lock, outside this area) — raising has NO effect today; if platform ever honours it, raising holds other people's messages out (409) longer after a crash | safe-to-max: no (keep =120, matches platform)
+4. toolkit/src/limits.ts:heartbeatMs | heartbeatMs = 15_000ms | god: 5_000ms (faster renew) | breaks: more lock-renew HTTP traffic (trivial), but lowering below ~5s adds churn; RAISING it risks losing the lock across one missed renewal | safe-to-max: conditional (lower is safer than raising)
+5. toolkit/src/copilotkit/thread-lock.ts:14 | THREAD_LOCK_TTL_SECONDS = 120 | god: n/a (platform-fixed) | breaks: informational constant only | safe-to-max: no (do not touch; must mirror platform)
+6. server/src/copilot.ts:534 | TOOL_STEPS = 8 (maxSteps for interactive agent run) | god: 25 | breaks: model-context + money — each step is a full model round-trip with all tool results in context; 25 steps × large tool outputs can blow context windows and 3x-5x the token bill per turn | safe-to-max: conditional (raise only for models with big context + budget caps)
+7. server/src/learning/remote.ts:21 | MAX_SKILL_STEPS = 10 | god: 30 | breaks: same as above but only in learning-skill loop; bounded blast radius | safe-to-max: conditional
+8. toolkit/src/headless-tools.ts:50 | MAX_TOOL_SEGMENTS = 30 | god: 100 | breaks: more segments = longer compound tool pipelines per turn, more model rounds; CPU/RAM trivial | safe-to-max: conditional (model-context cost)
+9. server/src/channels/stall-guard.ts:113 | sweepIntervalFor(stallMs) = min(1_000, max(50, stallMs/4)) | god: as-is (already derived) | breaks: lowering the 50ms floor spins the sweeper (CPU); raising the 1000ms cap delays stall reports up to a full deadline | safe-to-max: yes (leave; it is self-scaling)
+10. server/src/config.ts:1342 / index.ts:1241 | agentStallTimeoutMs = 0 (AGENT_STALL_TIMEOUT_MS unset = OFF) | god: 90_000ms | breaks: turning ON kills silent-but-working streams (false positives on slow models); a 90s stall kill on a 5min turn is proportionate | safe-to-max: conditional (on, at ~2min; never below 30s)
+11. server/src/channels/working.ts:80 | ROUTINE_IN_FLIGHT_MS = 2 × turnTimeoutMs = 10min | god: 2 × raised turnTimeoutMs (scales automatically) | breaks: rows stay "in flight" longer after a dead replica, delaying re-dispatch | safe-to-max: yes (derives from #1)
+12. server/src/agents/lifecycle.ts:55 | TURN_RETENTION_MS = 10min | god: 30min | breaks: in-memory turn map growth — trivial per turn, but on a hot server hundreds of stale turn records linger | safe-to-max: yes (RAM cost ~KBs)
+13. server/src/agents/lifecycle.ts:57 | CROSS_REPLICA_CHECK_MS = 5_000ms | god: 1_000ms | breaks: more cross-replica DB polls (5x query load) | safe-to-max: conditional (only with DB headroom)
+14. server/src/agents/lifecycle.ts:63 | UNREADABLE_CHECKS_BEFORE_STOP = 3 | god: 10 | breaks: a truly-dead replica keeps getting checked ~50s instead of ~15s before being stopped; trivial | safe-to-max: yes
+15. server/src/index.ts:2150 | proactive runTurn turnTimeoutMs = 3min (override of #1) | god: 10min | breaks: proactive suggestions are background work — raising delays the proactive sweep's slot and burns model tokens on suggestions nobody asked for | safe-to-max: conditional
+16. server/src/agents/handoff-delivery.ts:522 | DEFAULT_DELIVERY_DEADLINE_MS = 5min | god: 15min | breaks: a hop delivery (bot→bot question) holds its queue lease and the asker's wait longer; cross-bot latency | safe-to-max: conditional
+17. server/src/agents/handoff-runner.ts:98 | RENEW_EVERY_MS = 20_000ms (handoff lease renew) | god: 10_000ms | breaks: 2x lease-renew writes; RAISING risks lease expiry mid-delivery → duplicate delivery | safe-to-max: conditional (lower is safer)
+18. server/src/agents/handoff-delivery.ts:511 | LOCK_RENEW_EVERY_MS = 30_000ms | god: 15_000ms | breaks: same pattern as #17 | safe-to-max: conditional
+19. server/src/agents/handoff-runner.ts:108 | REAP_OLDER_THAN_MS = 24h | god: 7d | breaks: dead hops linger in the queue table 7x longer (DB rows, tiny); upside: late answers still deliverable | safe-to-max: yes
+20. server/src/agents/handoff-runner.ts:557 | RELAY_ANSWER_LIMIT = 12_000 chars | god: 50_000 | breaks: model-context — relayed answers ride inside the asking bot's next turn prompt | safe-to-max: conditional
+21. server/src/agents/handoff-delivery.ts:503 | RELAY_CONTEXT_MESSAGES = 6 | god: 20 | breaks: model-context per relayed hop | safe-to-max: conditional
+22. server/src/agents/callback-token.ts:45 | RUN_TTL_MS = 10min | god: 60min | breaks: callback tokens live longer — wider replay window if leaked; RAM/DB trivial | safe-to-max: conditional (security trade, not perf)
+23. server/src/agents/endpoint.ts:122 | MAX_REDIRECTS = 3 | god: 5 | breaks: near-zero; each redirect is one cheap HTTP hop | safe-to-max: yes
+24. server/src/agents/wake-up.ts:33-38 | WAKE_UP_MIN_DELAY_MS=60s, MAX_DELAY_MS=7d, MAX_PENDING=5, MAX_PER_DAY=20 | god: min 10s, max 30d, pending 20, per-day 100 | breaks: min 10s lets a bot tight-loop wake-ups (model spend); pending/per-day caps are anti-spam — raising lets a bot schedule 100 follow-ups/day | safe-to-max: conditional (lowering MIN_DELAY is the risky direction)
+25. server/src/dictation/routes.ts:48 / shared/dictation.ts:1-3 | MAX_DICTATION_BYTES=10MiB (+64KB framing), MAX_DICTATION_SECONDS=120s, DICTATION_TIMEOUT_MS=60s | god: 50MiB / 600s / 120s | breaks: RAM (audio held in memory), transcription model cost scales with seconds, bandwidth on upload | safe-to-max: conditional (transcription cost is the limiter)
+26. server/src/voice/routes.ts:18-21 | VOICE_HANDSHAKE_TIMEOUT_MS=20s, ATTEMPT_WINDOW_MS=60s, MAX_ATTEMPTS=5, MAX_TRACKED_USERS=1024 | god: 30s / 120s / 10 / 10_000 | breaks: MAX_TRACKED_USERS is an in-memory map — 10k users trivial RAM; raising MAX_ATTEMPTS weakens handshake rate-limiting (abuse) | safe-to-max: conditional (attempts = security)
+27. server/src/voice/provider.ts:28 | MAX_VOICE_SDP_BYTES = 128KB | god: 512KB | breaks: near-zero; SDPs are small by nature | safe-to-max: yes
+
+### B. Network / egress (HTTP timeouts, budgets, page sizes, fan-out)
+
+28. server/src/browser/routes.ts:152 | OPEN_BUDGET_MS = 150_000ms (per browser-open call) | god: 600_000ms | breaks: one hung browser-open holds a request slot + browser session for 10min; at scale = thread-pool exhaustion on the HTTP server | safe-to-max: conditional (needs request-concurrency headroom)
+29. server/src/browser/routes.ts:117 | OPEN_TIMEOUT_MS = 90_000ms | god: 180_000ms | breaks: same class as #28, per open attempt | safe-to-max: conditional
+30. server/src/browser/routes.ts:124 | CALL_TIMEOUT_MS = 45_000ms | god: 120_000ms | breaks: every browser action (click, type, navigate) may block 2min; a fleet of stuck actions ties up gateway connections | safe-to-max: conditional
+31. server/src/browser/routes.ts:134 | STATE_TIMEOUT_MS = 8_000ms | god: 20_000ms | breaks: low risk — state reads are cheap; raising only slows failure detection | safe-to-max: yes
+32. server/src/browser/routes.ts:156 | ANSWER_MARGIN_MS = 7_000ms | god: 15_000ms | breaks: near-zero; only extends graceful answer window | safe-to-max: yes
+33. server/src/browser/routes.ts:211 | DISCONNECT_TIMEOUT_MS = 5_000ms | god: 15_000ms | breaks: near-zero; slower disconnect on the failure path only | safe-to-max: yes
+34. server/src/browser/routes.ts:102 | ACTIVITY_STALE_MS = 90_000ms | god: 300_000ms | breaks: stale browser sessions considered live 5min — holds browser/computer resources longer (the expensive resource here is the per-bot browser) | safe-to-max: conditional
+35. server/src/browser/routes.ts:219-220 | NARRATION_AHEAD_MS=2min, NARRATION_BEHIND_MS=10min | god: as-is | breaks: narration window sizing only; no resource impact | safe-to-max: yes
+36. server/src/browser/host.ts:137 | REPUSH_MS = 30_000ms | god: 5_000ms | breaks: 6x repush traffic on the browser host channel; bandwidth | safe-to-max: conditional
+37. server/src/timeouts.ts:13 | OAUTH_REQUEST_TIMEOUT_MS = 15_000ms | god: 30_000ms | breaks: slow IdPs already handled; raising holds auth requests longer | safe-to-max: yes
+38. server/src/timeouts.ts:20 | DELIVERY_REQUEST_TIMEOUT_MS = 30_000ms | god: 60_000ms | breaks: delivery (OpenTag/Slack/etc.) calls hold sweep slots longer; the 2s delivery sweep cadence means slow calls pile up | safe-to-max: conditional
+39. server/src/delivery/opentag.ts:399 | AG_UI_HEARTBEAT_MS = 5_000ms | god: 15_000ms | breaks: RAISING saves bandwidth/CPU on idle streams; LOWERING (1s) 5x heartbeat traffic | safe-to-max: yes (raise freely; it is pure overhead)
+40. server/src/delivery/opentag.ts:401 | BUN_IDLE_TIMEOUT_MS = 10_000ms | god: 30_000ms | breaks: idle sockets held 3x longer (fd + RAM per connection); protects slow clients | safe-to-max: conditional
+41. server/src/plugins/mcp.ts:21-22 | LIST_TIMEOUT_MS=15s, CALL_TIMEOUT_MS=60s | god: 30s / 180s | breaks: MCP tool calls are model-blocking — raising to 180s means a hung MCP server stalls a turn for 3min (but turnTimeoutMs still backstops at 5min) | safe-to-max: conditional
+42. server/src/plugins/route-groups/context.ts:236 | VENDOR_CALL_TIMEOUT_MS = 10_000ms | god: 30_000ms | breaks: vendor latency absorbed; holds request longer | safe-to-max: yes
+43. server/src/plugins/route-groups/context.ts:244 | STATUS_CALL_TIMEOUT_MS = 2_000ms | god: 5_000ms | breaks: trivial | safe-to-max: yes
+44. server/src/plugins/route-groups/context.ts:250-251 | STATUS_POLLS=5, STATUS_PAUSE_MS=1_000ms | god: 10 polls / 500ms | breaks: 10 polls × 500ms = same 5s wall, finer granularity, 2x status-call traffic | safe-to-max: yes
+45. server/src/plugins/google-drive-rest.ts:33 | REQUEST_TIMEOUT_MS = 30_000ms | god: 90_000ms | breaks: large Drive exports need it; holds HTTP worker | safe-to-max: conditional
+46. server/src/plugins/plugin-store/model.ts:1036 | TOKEN_TIMEOUT_MS = 10_000ms | god: 30_000ms | breaks: trivial | safe-to-max: yes
+47. server/src/plugins/plugin-store/model.ts:1101 | CLIENT_REREGISTRATION_BACKOFF_MS = 5min | god: 1min (faster recovery) | breaks: LOWERING retries a failing vendor 5x more often (vendor rate-limit risk); raising delays recovery | safe-to-max: conditional (lower = faster heal but more vendor load)
+48. server/src/plugins/composio.ts:68 | LISTING_LIMIT = 1000 | god: 5000 | breaks: 5x rows per listing page — RAM per request (~MBs) + vendor rate-limit burn; catalogue walks get slower, not faster | safe-to-max: conditional
+49. server/src/plugins/composio-client/model.ts:661 | DIRECTORY_TTL_MS = 10min | god: 60min | breaks: RAISING = staler directory cache (correctness), but 6x fewer vendor calls; LOWERING = fresher but more vendor traffic | safe-to-max: conditional (freshness vs quota)
+50. server/src/plugins/arcade-adapter.ts:212-257 | CATALOGUE_PAGE_SIZE=100, CATALOGUE_CONCURRENCY=8, CATALOGUE_MAX_PAGES=1000, DIRECTORY_PAGE_SIZE=1000, DIRECTORY_CONCURRENCY=8 | god: page 500, concurrency 16, max-pages 2000 | breaks: concurrency 16 doubles parallel vendor connections (rate-limit + socket pressure); bigger pages = bigger JSON in RAM per response | safe-to-max: conditional (vendor rate limits are the ceiling)
+51. server/src/plugins/arcade-adapter.ts:777-784 | AUTH_PROVIDER_PAGE_SIZE=100, AUTH_PROVIDER_MAX_PAGES=100, CONNECTION_PAGE_SIZE=100, CONNECTION_MAX_PAGES=100 | god: 500 / 500 | breaks: same class as #50, smaller blast radius | safe-to-max: conditional
+52. server/src/plugins/arcade.ts:123-125 | PAGE_SIZE=100, MAX_PAGES=1000 | god: 500 / 2000 | breaks: same as #50 | safe-to-max: conditional
+53. server/src/plugins/composio-vendor.ts:455 | PAGE_CEILING = 200 | god: 1000 | breaks: vendor may cap server-side anyway; larger pages = larger RAM spikes | safe-to-max: conditional
+54. server/src/agents/connection-test.ts:18,21 | TEST_TIMEOUT_MS=15s, MAX_BYTES=8_000 | god: 30s / 64_000 | breaks: trivial; test-only path | safe-to-max: yes
+55. server/src/delivery/twilio.ts:120 | SMS text cap 1500 chars | god: n/a (carrier segments; Twilio bills per 160-char segment) | breaks: raising = multi-segment SMS cost | safe-to-max: no (carrier billing)
+56. server/src/computer/gateway.ts:400,407 | COMMAND_BACKSTOP_MS=615s, DOWNLOAD_BACKSTOP_MS=300s | god: as-is | breaks: these are last-resort kill switches ABOVE every other timeout; raising lets a wedged computer command burn 10min+ of billed compute | safe-to-max: no (backstops should stay)
+57. server/src/computer/gateway.ts:1476 | SIGN_IN_BACKSTOP_MS = 75_000ms | god: 180_000ms | breaks: interactive sign-in flows are slow by nature; raising only delays the kill of a truly stuck login | safe-to-max: yes
+58. server/src/computer/sandbox.ts:171,221 | LOCATE_WAIT_MS=45s, TOKEN_MEMO_MS=30s | god: 120s / 60s | breaks: LOCATE_WAIT holds sandbox provisioning; TOKEN_MEMO is a cache TTL — raising = longer-lived cached tokens (security), lowering = more token fetches | safe-to-max: conditional
+59. server/src/computer/policy-network.ts:149 | UNKNOWN_RUN_REPUSH_MS = 30_000ms | god: 10_000ms | breaks: 3x repush traffic | safe-to-max: conditional
+60. server/src/host-access/schema.ts:1 | HOST_ACCESS_DESKTOP_LEASE_MS = 15_000ms | god: 60_000ms | breaks: longer desktop lease = wider window for a hijacked lease; trivial perf | safe-to-max: conditional (security)
+61. server/src/identity/github-oauth.ts:16, server/src/plugins/oauth.ts:43 | STATE_TTL_MS = 10min (×2) | god: 30min | breaks: longer OAuth state replay window (CSRF-state); trivial perf | safe-to-max: conditional (security)
+62. server/src/web-bot-auth.ts:34 | DIRECTORY_SIGNATURE_TTL_SECONDS = 300 | god: 900 | breaks: longer-lived signed directory URLs (security); fewer re-signs | safe-to-max: conditional
+
+### C. Loops cadence (sweeps — all server/src/index.ts repeatAfterEach unless noted)
+
+63. index.ts:2280 | groupSweep = 1_000ms | god: 250ms | breaks: 4x claim-query load per replica; group conversation latency is the most user-visible — this is the highest-ROI cadence to tighten | safe-to-max: conditional (DB headroom)
+64. index.ts:2264 | deliverySweeps = 2_000ms per delivery kind | god: 500ms | breaks: delivery latency is user-visible; 4x sweep queries per kind per replica | safe-to-max: conditional
+65. index.ts:2294 | personResponseSweep = 2_000ms | god: 500ms | breaks: approval question → person latency; same DB-cost pattern | safe-to-max: conditional
+66. index.ts:2037 | approvalSweep (resume tick) = 2_000ms | god: 500ms | breaks: approved-action resume latency; DB claims | safe-to-max: conditional
+67. index.ts:1902 | responsibilitySweep = 2_000ms | god: 1_000ms | breaks: responsibility dispatch latency | safe-to-max: conditional
+68. index.ts:2245 | wakeUpSweep = 5_000ms | god: 1_000ms | breaks: bot self-follow-up latency; wake-ups are rare — 5x polls mostly idle | safe-to-max: conditional
+69. index.ts:2405 | channelSummaries = 10_000ms | god: 5_000ms | breaks: conversation-naming latency; each pass can fire model calls (titler) — tightening increases model spend on idle channels | safe-to-max: conditional (model cost)
+70. index.ts:1321 | recorderExpirySweep = 60_000ms | god: 15_000ms | breaks: recorder code expiry granularity; trivial DB | safe-to-max: yes
+71. index.ts:1408 | memorySweep = 60_000ms | god: 30_000ms | breaks: memory consolidation latency; each sweep can trigger research model calls (DEFAULT_RESEARCH_INTERVAL_MINUTES gates the expensive part) | safe-to-max: conditional
+72. index.ts:2194 | proactiveSweep = 60_000ms | god: 30_000ms | breaks: proactive suggestion latency; each sweep may run model calls (bounded by MAX_SUGGESTIONS_PER_RUN=5) | safe-to-max: conditional (model cost)
+73. index.ts:2260 | wakeUpReaper = 3_600_000ms (1h) | god: 15min | breaks: dead wake-up rows linger; trivial | safe-to-max: yes
+74. index.ts:2374 | handoff reaper = 3_600_000ms (1h) | god: 15min | breaks: trivial; delete-by-age is idempotent | safe-to-max: yes
+75. server/src/audit-retention.ts:134-135 | retention sweep intervalMs=3_600_000ms (1h), firstRunMs=60_000ms | god: 15min / 10s | breaks: audit DELETE batches (5k rows × 200 batches = up to 1M rows/sweep) run 4x more often — DB write load; upside: fresher retention | safe-to-max: conditional (DB load)
+76. server/src/admin/controls.ts:606-607 | setInterval refresh=60_000ms, pushNetworkPolicies=30_000ms | god: 30s / 10s | breaks: policy-push churn to computers; 3x control-plane traffic | safe-to-max: conditional
+77. worker/src/index.ts:89,101-102 | TICK_MS=30s, PURGE_EVERY_N_TICKS=120 (~hourly), PURGE_OLDER_THAN_MS=24h | god: 10s / 360 (~hourly) / 24h | breaks: routine-offer latency drops 3x; keep purge hourly by scaling PURGE_EVERY_N_TICKS with TICK_MS | safe-to-max: conditional
+78. server/src/routines/sweep.ts:31,40,48,58 | DEFAULT_LIMIT=50, DEFAULT_LEASE_MS=60s, DISPATCH_RETRY_DELAY_MS=60s, DEFAULT_GRACE_MS=10min | god: 200 / 5min / 15s / 30min | breaks: limit 200 = bigger claim batches per sweep (DB + dispatch burst); lease 5min holds claimed routines longer on dead workers; grace 30min lets late routines fire later (correctness) | safe-to-max: conditional
+79. server/src/routines/schedule.ts:4,33,85 | MINIMUM_INTERVAL_MS=15min, MAX_MEMOIZED_VERDICTS=1000, FLOOR_SCAN_OCCURRENCES=200 | god: 1min / 10_000 / 1000 | breaks: MINIMUM_INTERVAL 1min lets users schedule per-minute routines — each firing is a full headless turn (MODEL COST × firings); the memo/scan caps are RAM (~KBs) | safe-to-max: conditional (model cost is the real limiter)
+80. server/src/routines/store.ts:66,68,70,79,90 + runner.ts:42,45 | MAX_ENABLED_ROUTINES=20, MAX_INSTRUCTION_CODE_POINTS=2000, MAX_RUN_ERROR=400, FAILURE_SCAN_LIMIT=20, MAX_NAMED_CHANNELS=5, MAX_NOTIFIED_REASON=160, FATIGUE_LIMIT=10 | god: 100 / 8000 / 2000 / 100 / 20 / 500 / 25 | breaks: routines × firings = model spend; instruction 8000 chars rides every firing's prompt (model-context); fatigue 25 lets a failing routine burn 2.5x more turns before backing off | safe-to-max: conditional (model spend)
+81. server/src/proactive/engine.ts:36,38 + types.ts:11-15 + private-share.ts:32 | RUN_LEASE_MS=10min, RUN_NOW_GAP_MS=10min, MIN_INTERVAL_MINUTES=60, MAX_INTERVAL_MINUTES=1440, MAX_SUGGESTIONS_PER_RUN=5, MAX_MEMORIES_PER_RUN=10, ONCE_WINDOW_MS=30min | god: lease 30min / gap 2min / min-interval 15min / max-interval 4320 / suggestions 15 / memories 30 / once-window 10min | breaks: proactive = background MODEL SPEND; min-interval 15min quadruples suggestion generation; suggestions/memories per run ride the prompt (context) | safe-to-max: conditional (model spend)
+82. server/src/approvals/resume-sweep.ts:60, server/src/approvals/person-response-sweep.ts:60 | leaseMs 15min / 10min | god: 30min / 30min | breaks: crashed approval-runner holds the approval 2-3x longer before another replica resumes it (latency on failure) | safe-to-max: conditional
+83. server/src/work/queue.ts:88 | DEFAULT_MAX_ATTEMPTS = 5 | god: 10 | breaks: poison work retried 2x — each attempt can be a full agent turn (model spend); upside: transient failures self-heal | safe-to-max: conditional
+84. server/src/delivery/router.ts:110 | leaseMs = 60_000ms | god: 5min | breaks: dead delivery worker holds the message 5x longer before redelivery (latency) | safe-to-max: conditional
+85. server/src/learning/* | auto-assign RETRY_MS=10min/MIN_INTERVAL_MS=60s; personal-space CACHE_MS=60s/RETRY_MS=60s; runtime PERSONAL_WAIT_MS=2s/PERSONAL_READ_MS=5s/PERSONAL_RETRY_MS=60s; routes AUTO_ASSIGN_WAIT_MS=3s; sharing INDEX_TTL_MS=30s | god: halve the waits (1s/2.5s/1.5s), cache 5min | breaks: learning-container probe traffic; waits are request-latency on the learning path | safe-to-max: conditional
+86. server/src/memory/* | DEFAULT_RESEARCH_INTERVAL_MINUTES=240, MIN_INTERVAL_MS=5min; intelligence AVAILABLE_TTL_MS=10min, FAILURE_TTL_MS=60s, LIST_TTL_MS=30s; self-host-banner ANSWER_TTL_MS=10min, FAILURE_TTL_MS=60s, COLD_WAIT_MS=1s | god: research 60min, min-interval 1min, TTLs 2x | breaks: research 60min = 4x background research model spend; TTLs are vendor-call caches — raising saves quota, lowering freshens | safe-to-max: conditional
+87. server/src/passwords/service.ts:64,75 | DEFAULT_TTL_MS=15min, FILLING_LEASE_MS=120s | god: 60min / 300s | breaks: longer-lived password grants (security); trivial perf | safe-to-max: conditional (security)
+88. server/src/auth/organization.ts:13 | ORGANIZATION_SESSION_MAX_AGE_SECONDS = 7d | god: 30d | breaks: longer sessions = larger stolen-cookie window (security); fewer re-logins | safe-to-max: conditional (security)
+89. server/src/recorder/* | connections LAST_USED_INTERVAL_MS=60s, LIVE_CODES_PER_PERSON=10; guard ORGANIZATION_VERDICT_TTL_MS=60s; refusal-audit/trajectory-gate WINDOW_MS=60s; trajectory-gate SELECTOR_BUDGET_MS=4s, CHECK_STOP_EARLY_MS=100ms; wiring LEARNING_SPACE_WAIT_MS=4s; shared RECORDER_CONNECT_CODE_TTL_MS=5min | god: interval 15s, codes 50, budgets 2x, code TTL 15min | breaks: mostly audit/UX granularity; SELECTOR_BUDGET 8s slows trajectory checks (CPU) | safe-to-max: yes (mostly)
+90. server/src/learning/ensure-container.ts:151, server/src/provider-oauth-lock.ts:153,69 | child.kill after 120s / 15s; Bun.sleep(25) poll | god: as-is | breaks: kill timers are failure backstops; sleep(25) is a tight poll — raising to 100ms saves CPU spin | safe-to-max: yes
+91. server/src/computer/sandbox.ts:404,478 | setTimeout(resolve, 1_000) ×2 | god: as-is | breaks: 1s settle delays in sandbox ops; trivial | safe-to-max: yes
+92. server/src/approvals/wiring.ts:50 | sleep(500) | god: 100ms | breaks: trivial ordering delay | safe-to-max: yes
+
+### D. Memory caps (caches, TTLs, in-memory bounds)
+
+93. server/src/plugins/route-groups/app-access.ts:46 | MAX_PENDING_REQUESTS = 20 | god: 100 | breaks: in-memory pending queue — 100 trivial RAM; more concurrent approval asks per app | safe-to-max: yes
+94. server/src/voice/routes.ts:21 | MAX_TRACKED_USERS = 1024 | god: 100_000 | breaks: in-memory map, ~100 bytes/user — 10MB at 100k; fine | safe-to-max: yes
+95. server/src/plugins/content-governance.ts:77-80 | MAX_NODES=2_000, MAX_DEPTH=20, MAX_FINDINGS=20, MAX_STRING_LENGTH=64KB | god: 10_000 / 50 / 100 / 256KB | breaks: CPU to walk bigger payloads; governance runs per plugin payload — 5x CPU on hostile inputs | safe-to-max: conditional (CPU)
+96. server/src/plugins/composio.ts:366 | SCHEMA_DEPTH = 64 | god: 128 | breaks: deeper schema walk = more CPU per tool listing; RAM trivial | safe-to-max: conditional
+97. server/src/activity/activity.ts:73 | COMPLETED_LIMIT = 25 | god: 100 | breaks: activity feed payload size (bandwidth + client render); DB limit 50 | safe-to-max: yes
+98. shared/recorder-masking.ts:30,34,110 | MAX_EVENT_BYTES=16KB, EVENT_BUDGET_BYTES=15KB, DIGEST_MEMO_LIMIT=4096 | god: 64KB / 60KB / 16384 | breaks: recorder event RAM per event; masking CPU | safe-to-max: yes
+
+### E. Concurrency / locks / admission
+
+99. server/src/db/client.ts:199-232 | pool max = driver default (drizzle/postgres default 10; retention sweeper uses its own max:1 connection) | god: 25 | breaks: each connection = ~10MB RAM server-side + a Postgres backend slot; 25 needs max_connections headroom or you get connection-refused under load | safe-to-max: conditional (DB max_connections)
+100. server/src/config.ts:448-449 | BOT_HANDOFF_MAX_DEPTH=1, BOT_HANDOFF_MAX_PER_RUN=3 | god: 3 / 10 | breaks: depth 3 = bot→bot→bot→bot chains — each hop is a full agent turn (MODEL SPEND × fan-out); runaway delegation loops | safe-to-max: conditional (model spend + loop risk)
+101. server/src/config.ts:82,1215 | COMPUTER_SANDBOX_IDLE_AFTER default "30m" (COMPUTER_SANDBOX_IDLE_AFTER) | god: 4h | breaks: idle browser-computers (each = a Chromium + container, ~300-500MB RAM) held 8x longer — the single biggest RAM lever in the backend | safe-to-max: conditional (RAM; LOWERING to 5m is the god move for cost)
+102. server/src/work/culler.ts:28 | culler idleAfterMs (wired from #101) | god: n/a (derives) | breaks: — | safe-to-max: n/a
+103. server/src/channels/working.ts | serverTurnAdmission (turn admission gate) — no numeric cap found in backend; admission is policy-based | god: n/a | breaks: — | safe-to-max: n/a
+
+### F. Storage / attachments (sizes, counts, retention, purge)
+
+104. shared/attachments.ts:10 | MAX_ATTACHMENTS_PER_MESSAGE = 8 | god: 32 | breaks: 4x files per message → 4x upload bandwidth, staged-disk, and model-context (extracted text) per message | safe-to-max: conditional
+105. shared/attachments.ts:32 | MAX_IMAGE_BYTES = 8MiB | god: 32MiB | breaks: RAM — images are decoded/held in memory; a 32MiB image × 8/message = 256MiB transient per message | safe-to-max: conditional (RAM)
+106. shared/attachments.ts:66 | MAX_FILE_BYTES = 1MiB (text files; VERIFIED — the "8MiB" known-item figure is the IMAGE cap) | god: 8MiB | breaks: extracted text per file → model-context; 120k-char extraction cap still backstops | safe-to-max: conditional
+107. server/src/channels/attachments.ts:552-553 | MAX_STAGED_ATTACHMENTS_PER_UPLOADER = 4 × 8 = 32 | god: 128 | breaks: staged rows in Postgres + TOASTed bytea — 32 uploaders × 128 × 8MiB worst case = 32GiB staged; DB disk | safe-to-max: conditional (DB disk)
+108. server/src/channels/attachment-parts.ts:323 | MAX_INLINED_BYTES_PER_RUN = 32MiB | god: 128MiB | breaks: per-run inlined bytes ride the model's context — 128MiB of file bytes inlined into ONE turn will blow any context window; this is a MODEL-CONTEXT cap, not a disk cap | safe-to-max: no (raising past 32MiB is context suicide)
+109. shared/attachments.ts:95 | MAX_EXTRACTED_CHARACTERS = 120_000 | god: 500_000 | breaks: ~500k chars ≈ 125k+ tokens per file into the prompt — context window + token bill | safe-to-max: conditional
+110. server/src/channels/attachments.ts:581,641 | MAX_UPLOAD_GROUP_LENGTH=128, MAX_FILENAME_BYTES=255 | god: as-is | breaks: protocol/filesystem limits; no | safe-to-max: no
+111. server/src/channels/attachments.ts:1236 | ATTACHMENT_CACHE_CONTROL = "private, no-cache" | god: as-is | breaks: intentional — attachments revalidate every paint; raising cacheability saves bandwidth but risks stale/mispermissioned serves | safe-to-max: no
+112. server/src/computer/page-frames.ts:18,27,30-31 | MAX_FRAME_BYTES=4MiB, FRAME_RETENTION_MS=30d, PURGE_BATCH=200, MAX_PURGE_BATCHES=200 | god: 16MiB / 90d / 1000 / 500 | breaks: frames table = screenshots in Postgres; 90d retention × fleet = GBs of DB disk; purge 500k rows/sweep = heavy DELETE load | safe-to-max: conditional (DB disk)
+113. server/src/audit-retention.ts:45,48 | BATCH=5_000, MAX_BATCHES=200 (≤1M rows/sweep) | god: 20_000 / 500 (≤10M) | breaks: bigger batches hold longer row locks on audit_events — the table every action writes to; write stalls | safe-to-max: conditional (DB write latency)
+114. server/src/config.ts:1329 | AUDIT_RETENTION_DAYS unset = undefined = keep FOREVER ✓ (re-verified) | god: set 365 | breaks: setting any value DELETES history; forever costs DB disk growth | safe-to-max: conditional (compliance vs disk)
+115. server/src/admin/controls.ts:65 | ACTION_RECORD_RETENTION_DAYS = 90 | god: 365 | breaks: admin action-record table growth; DB disk | safe-to-max: yes
+116. server/src/audit.ts:1131-1132 | AUDIT_EXPORT_MAX_ROWS=5_000, AUDIT_EXPORT_PAGE_SIZE=500 | god: 50_000 / 2_000 | breaks: export RAM (rows materialised) + response bandwidth; 50k rows ≈ tens of MB per export | safe-to-max: conditional
+117. server/src/demonstrations/types.ts:53 | DEMONSTRATION_MAX_DURATION_MS = 10min | god: 60min | breaks: demonstration recordings = stored trajectory data; 6x storage per demo | safe-to-max: conditional
+118. shared/recorder-api.ts:5 | RECORDER_CONNECT_CODE_TTL_MS = 5min | god: 30min | breaks: longer-lived connect codes (security); trivial storage | safe-to-max: conditional
+
+### G. Misc timers / truncation (output bounds, text caps)
+
+119. server/src/plugins/mcp.ts:31 | MAX_RESULT_CHARS = 20_000 | god: 100_000 | breaks: MCP tool results ride the model context — 100k chars ≈ 25k tokens PER TOOL CALL; × TOOL_STEPS=8 = context death | safe-to-max: conditional (model-context)
+120. server/src/plugins/mcp.ts:53 | LINK_FIELD_CHARS = 400 | god: 2000 | breaks: trivial | safe-to-max: yes
+121. server/src/plugins/builtin-routines.ts:252 | routine tool results truncated at MAX_RESULT_CHARS (20k) | god: n/a (same as #119) | — | —
+122. server/src/channels/routes.ts:97,100 | DEFAULT_CHANNEL_PAGE=50, MAX_CHANNEL_PAGE=200 | god: 100 / 1000 | breaks: page payload bandwidth + DB; 1000-row pages ≈ MBs per response | safe-to-max: conditional
+123. server/src/channels/routes.ts:257-258 | MAX_CHANNEL_NAME_CODE_POINTS=120, MAX_ACTIVITY_GRAPHEMES=200 | god: as-is | breaks: UI bounds; no | safe-to-max: no
+124. server/src/channels/summary.ts:26,29 | MAX_SUMMARY_GRAPHEMES=60, MAX_EXCERPT_GRAPHEMES=600 | god: 120 / 2000 | breaks: excerpt 2000 graphemes rides the titler model prompt (context) | safe-to-max: conditional
+125. server/src/people/store.ts:82,93 | DEFAULT_PAGE=50, MAX_PAGE=200 | god: 100 / 1000 | breaks: same as #122 | safe-to-max: conditional
+126. server/src/user-instructions.ts:41 | INSTRUCTIONS_LIMIT = 4000 | god: 16000 | breaks: instructions ride EVERY turn's system prompt — 16k chars ≈ 4k tokens of permanent context tax on every model call | safe-to-max: conditional (model-context)
+127. server/src/routing/service.ts:24 | MAX_ROUTING_TEXT_LENGTH = 10000 | god: 40000 | breaks: routing classifier prompt size (model-context per message) | safe-to-max: conditional
+128. server/src/responsibilities/trigger-routes.ts:35, triggers.ts:232 | TRIGGER_BODY_LIMIT=256KB, MAX_EVENT_PAYLOAD=32_768 | god: 1MiB / 128KB | breaks: webhook payload RAM; event payload rides the responsibility turn prompt | safe-to-max: conditional
+129. server/src/responsibilities/signatures.ts:99 | STANDARD_WEBHOOK_TOLERANCE_SECONDS = 300 | god: 900 | breaks: wider replay window for webhooks (security); trivial perf | safe-to-max: conditional
+130. server/src/browser/routes.ts:113,115 | ERROR_LOG_CHARS=500, BODY_LIMIT_BYTES=16KB | god: 2000 / 64KB | breaks: log volume; trivial | safe-to-max: yes
+131. server/src/recorder/routes.ts:47 | BODY_LIMIT_BYTES = 2KB | god: 8KB | breaks: trivial | safe-to-max: yes
+132. server/src/recorder/trajectory-gate.ts:33 | TRAJECTORY_ID_AUDIT_CHARS = 64 | god: as-is | breaks: none | safe-to-max: yes
+133. server/src/app.ts:171 | MULTIPART_FRAMING_ALLOWANCE = 64KB | god: 256KB | breaks: multipart parse RAM per upload; trivial | safe-to-max: yes
+134. server/src/delivery/opentag.ts:454 | LABEL_MAX = 20 | god: as-is | breaks: UI label bound; no | safe-to-max: no
+135. server/src/identity/providers.ts:38, store.ts:119 | REALM_MAX=512, HANDLE_MAX=256 | god: as-is | breaks: protocol-ish bounds; no | safe-to-max: no
+136. server/src/channels/thread-identity.ts:25 | FINGERPRINT_BYTES = 6 | god: as-is (crypto) | breaks: raising changes fingerprint format; no | safe-to-max: no
+137. server/src/config.ts:1375 | serverPort default 3001 (DEFAULT_PORT) | god: n/a | breaks: — | safe-to-max: n/a
+138. server/src/google-oauth-transport.ts:295 | MAX_TOKENS → "length" mapping (reason code, not a tunable) | god: n/a | — | —
+
+### Re-verified known items
+- toolkit/src/limits.ts turnTimeoutMs = 5min ✓ (item 1)
+- server/src/browser/routes.ts OPEN_BUDGET_MS=150s ✓ (#28), CALL_TIMEOUT_MS=45s ✓ (#30)
+- attachments: 8 files/message (#104), 32 staged/uploader (#107), 8MiB IMAGE cap (#105); FILE (text) cap is 1MiB (#106) — the "8MiB" figure is the image cap, not the file cap
+- AUDIT_RETENTION_DAYS unset = keep forever ✓ (#114)
+- agent-computer 60s idle eviction: NOT in this area — agent-computer/ is a separate top-level package outside server/toolkit/worker/shared (the sandbox provider default here is COMPUTER_SANDBOX_IDLE_AFTER=30m, #101); the 60s figure lives in agent-computer code, unverified in this sweep by scope.
+
+### Out-of-scope-but-adjacent (flagged, not counted)
+- apps/app-api thread-lock TTL fixed at 120s (platform side of #3/#5) — outside backend area.
+- DB pool default 10 comes from the postgres driver, not repo code (#99).

@@ -347,7 +347,7 @@ function NewBotFlow({ onCreated }: { onCreated: (agentId: string) => void }) {
             className="mt-6"
             initial={{ opacity: 0, x: 24 * direction }}
             key={step}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={{ duration: 0.1, ease: "easeOut" }}
           >
             {step === "about" ? (
               <>
@@ -478,9 +478,9 @@ function NewBotFlow({ onCreated }: { onCreated: (agentId: string) => void }) {
 }
 
 /** How long the created view holds before handing over to the new Bot's page. */
-const CREATED_BEAT_MS = 1600;
+const CREATED_BEAT_MS = 800;
 /** Shorter with reduced motion: nothing is moving, so the pause is only long enough to read. */
-const CREATED_BEAT_REDUCED_MS = 900;
+const CREATED_BEAT_REDUCED_MS = 500;
 const ORB_LAYOUT_ID = "new-bot-orb";
 
 /**
@@ -504,7 +504,7 @@ function CreatedView({ name }: { name: string }) {
       <div className="relative">
         <motion.div
           layoutId={ORB_LAYOUT_ID}
-          transition={{ type: "spring", bounce: 0.25, duration: 0.7 }}
+          transition={{ type: "spring", bounce: 0.25, duration: 0.35 }}
         >
           <AgentOrb size="88px" state="done" />
         </motion.div>
@@ -513,10 +513,10 @@ function CreatedView({ name }: { name: string }) {
           className="absolute -right-0.5 -bottom-0.5 flex size-7 items-center justify-center rounded-full bg-emerald-500 text-white ring-3 ring-popover"
           initial={{ opacity: 0, scale: 0 }}
           transition={{
-            delay: 0.45,
+            delay: 0.225,
             type: "spring",
             bounce: 0.5,
-            duration: 0.5,
+            duration: 0.25,
           }}
         >
           <IconCheck aria-hidden className="size-4" stroke={3} />
@@ -525,7 +525,7 @@ function CreatedView({ name }: { name: string }) {
       <motion.div
         animate={{ opacity: 1, y: 0 }}
         initial={{ opacity: 0, y: 8 }}
-        transition={{ delay: 0.3, duration: 0.35, ease: "easeOut" }}
+        transition={{ delay: 0.15, duration: 0.175, ease: "easeOut" }}
       >
         <h2 className="break-words font-semibold text-xl tracking-tight">
           {name} is ready

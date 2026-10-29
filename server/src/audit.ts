@@ -1128,8 +1128,8 @@ export function auditQueryFromUrl(url: URL): AuditEventQuery {
  * the export carries them as one JSON column rather than spreading unknown keys across
  * columns a spreadsheet would then misread.
  */
-export const AUDIT_EXPORT_MAX_ROWS = 5_000;
-export const AUDIT_EXPORT_PAGE_SIZE = 500;
+export const AUDIT_EXPORT_MAX_ROWS = 50_000;
+export const AUDIT_EXPORT_PAGE_SIZE = 2_000;
 
 export const AUDIT_EXPORT_COLUMNS = [
   "id",

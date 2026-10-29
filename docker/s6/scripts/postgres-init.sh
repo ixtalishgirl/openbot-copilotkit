@@ -24,7 +24,7 @@ if [ ! -s "$DATA/PG_VERSION" ]; then
   # s6-overlay service of that name has nothing to act on. `postgres-init` is a oneshot whose `up`
   # runs as root, so it can, and `initdb` a line below cannot — it has already dropped to `postgres`.
   mkdir -p "$DATA"
-  chown postgres:postgres "$DATA"
+  chown pwuser:pwuser "$DATA"
 
   # A volume mounted directly AT the data directory, rather than at its parent, arrives holding
   # `lost+found` on any platform whose volume is an ext4 mount — which is most of them. `initdb`
@@ -41,32 +41,33 @@ if [ ! -s "$DATA/PG_VERSION" ]; then
   fi
 
   # The cluster's password, generated once and kept on the same volume as the data. openssl is not in
-  # this image; /dev/urandom is. 600 and owned by postgres, so the Bot's shell (which runs as pwuser)
-  # cannot read the file even if it goes looking.
+  # this image; /dev/urandom is. 600 and owned by pwuser.
+  # MONSTER REBUILD (owner order): single user — the Bot's shell also runs as pwuser, so the old
+  # "the shell cannot read it" boundary is gone by design.
   PW="$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
   ( umask 077; printf '%s' "$PW" > "$PW_FILE" )
-  chown postgres:postgres "$PW_FILE"
+  chown pwuser:pwuser "$PW_FILE"
 
   # initdb reads the superuser password from a file (never an argument, which would show in `ps`), and
   # sets scram for both local and TCP connections. The temp file is removed the moment initdb returns.
   PWTMP="$(mktemp)"
   printf '%s' "$PW" > "$PWTMP"
-  chown postgres:postgres "$PWTMP"
-  s6-setuidgid postgres "$BIN/initdb" -D "$DATA" -A scram-sha-256 -U openbot --pwfile="$PWTMP" >/dev/null
+  chown pwuser:pwuser "$PWTMP"
+  s6-setuidgid pwuser "$BIN/initdb" -D "$DATA" -A scram-sha-256 -U openbot --pwfile="$PWTMP" >/dev/null
   rm -f "$PWTMP"
 
-  s6-setuidgid postgres "$BIN/pg_ctl" -D "$DATA" -o "-c listen_addresses=127.0.0.1" -w start >/dev/null
+  s6-setuidgid pwuser "$BIN/pg_ctl" -D "$DATA" -o "-c listen_addresses=127.0.0.1" -w start >/dev/null
   # Over TCP with the password now, since the cluster no longer trusts an unauthenticated connection.
-  PGPASSWORD="$PW" s6-setuidgid postgres "$BIN/createdb" -h 127.0.0.1 -U openbot openbot
-  PGPASSWORD="$PW" s6-setuidgid postgres "$BIN/psql" -h 127.0.0.1 -U openbot -d openbot -c 'CREATE EXTENSION IF NOT EXISTS vector' >/dev/null
-  s6-setuidgid postgres "$BIN/pg_ctl" -D "$DATA" -w stop >/dev/null
+  PGPASSWORD="$PW" s6-setuidgid pwuser "$BIN/createdb" -h 127.0.0.1 -U openbot openbot
+  PGPASSWORD="$PW" s6-setuidgid pwuser "$BIN/psql" -h 127.0.0.1 -U openbot -d openbot -c 'CREATE EXTENSION IF NOT EXISTS vector' >/dev/null
+  s6-setuidgid pwuser "$BIN/pg_ctl" -D "$DATA" -w stop >/dev/null
 fi
 
 # Every boot, not only the first: hand the password-bearing URL to the services that connect over TCP
 # (`api` and `migrate`, both `with-contenv`). The password persists with the cluster; the container
 # environment is fresh each boot, so this has to run outside the first-init guard above. The file is
-# root-written here into s6's own environment directory, which pwuser cannot write and the Bot's shell
-# does not read.
+# root-written here into s6's own environment directory, which pwuser cannot write.
+# MONSTER REBUILD (owner order): single user — the Bot's shell also runs as pwuser.
 if [ -s "$PW_FILE" ]; then
   PW="$(cat "$PW_FILE")"
   printf 'postgres://openbot:%s@127.0.0.1:5432/openbot' "$PW" \

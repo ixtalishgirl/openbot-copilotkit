@@ -41,7 +41,7 @@ export type ComputerActivity = {
  * Bounded, because a Bot working through a large job runs a lot of commands and this is a pane, not
  * an archive. The oldest go first: what somebody watching wants is what just happened.
  */
-const LIMIT = 200;
+const LIMIT = 500;
 
 const byComputer = new Map<string, ComputerActivity[]>();
 const listeners = new Set<() => void>();

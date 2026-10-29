@@ -452,7 +452,7 @@ export const whose = (account: AccountRef) =>
  * A ceiling is a number somebody reasons about; stating one and doing another makes it the one
  * number here nobody can check.
  */
-const PAGE_CEILING = 200;
+const PAGE_CEILING = 1000;
 
 /**
  * The listing a refusal is about, as the two clauses every sentence below is built from.

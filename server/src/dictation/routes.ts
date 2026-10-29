@@ -47,7 +47,7 @@ export function createDictationRoutes(
     bodyLimit({
       maxSize: MAX_DICTATION_BYTES + 64 * 1024,
       onError: (context) =>
-        context.json({ error: "Recordings must be smaller than 10 MiB." }, 413),
+        context.json({ error: "Recordings must be smaller than 50 MiB." }, 413),
     }),
     async (context) => {
       const body = await context.req.raw.formData().catch(() => null);
@@ -57,7 +57,7 @@ export function createDictationRoutes(
       }
       if (file.size > MAX_DICTATION_BYTES) {
         return context.json(
-          { error: "Recordings must be smaller than 10 MiB." },
+          { error: "Recordings must be smaller than 50 MiB." },
           413,
         );
       }

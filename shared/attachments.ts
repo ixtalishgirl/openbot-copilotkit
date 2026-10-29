@@ -7,7 +7,7 @@
  * composer accepted and the server threw away with no explanation.
  */
 
-export const MAX_ATTACHMENTS_PER_MESSAGE = 8;
+export const MAX_ATTACHMENTS_PER_MESSAGE = 32;
 
 /**
  * A hard ceiling, not a downscaling threshold: nothing in this path resizes
@@ -92,7 +92,7 @@ export const MAX_FILE_BYTES = 1024 * 1024;
  * whole. It is deliberately a "may", since the same byte count is fewer characters in any script
  * that costs more than a byte each.
  */
-export const MAX_EXTRACTED_CHARACTERS = 120_000;
+export const MAX_EXTRACTED_CHARACTERS = 500_000;
 
 /**
  * Whether a file of this many BYTES may reach the model truncated.

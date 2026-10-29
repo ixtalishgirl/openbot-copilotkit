@@ -63,11 +63,11 @@ export class RoutineRefusedError extends Error {
 }
 
 /** A person may keep this many routines switched on. A constant with a reason, not a setting. */
-export const MAX_ENABLED_ROUTINES = 20;
+export const MAX_ENABLED_ROUTINES = 100;
 /** Same code-point cap discipline as channel activity. */
-export const MAX_INSTRUCTION_CODE_POINTS = 2000;
+export const MAX_INSTRUCTION_CODE_POINTS = 8000;
 /** Capped like audit payloads, because a failure is not a promise about length. */
-export const MAX_RUN_ERROR = 400;
+export const MAX_RUN_ERROR = 2000;
 /**
  * How far back the failure count looks.
  *
@@ -76,7 +76,7 @@ export const MAX_RUN_ERROR = 400;
  * called on every failed firing, for ever: a routine that has failed nightly for a year would make
  * the count get slower exactly as the routine got worse.
  */
-const FAILURE_SCAN_LIMIT = 20;
+const FAILURE_SCAN_LIMIT = 100;
 
 const NO_SHARED_CHANNEL =
   "I can only post into a channel you and I are both in.";
@@ -87,7 +87,7 @@ const INSTRUCTION_TOO_LONG = `An instruction can be at most ${MAX_INSTRUCTION_CO
 const TOO_MANY_ENABLED = `You already have ${MAX_ENABLED_ROUTINES} routines switched on. Switch one off before adding another.`;
 
 /** How many names an ambiguity refusal reads out before it gives up and says "and others". */
-const MAX_NAMED_CHANNELS = 5;
+const MAX_NAMED_CHANNELS = 20;
 
 export type RoutineRunOutcome = "succeeded" | "failed" | "skipped" | "waiting";
 

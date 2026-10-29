@@ -32,7 +32,7 @@ export const WORKING_SELECTOR = '[data-slot="composer-stop"]';
  * that thought for that moment on every open would be a flicker, not news. A real turn runs far
  * longer than this.
  */
-export const WORKING_SETTLE_MS = 700;
+export const WORKING_SETTLE_MS = 300;
 /** The composer's input, around its editor. */
 export const INPUT_SELECTOR = '[data-slot="composer-input"]';
 /** The editor itself, which takes the focus. */
@@ -72,7 +72,7 @@ export function pressOrb(root: ParentNode): OrbPress {
  */
 export function pressOrbWhenReady(
   root: () => ParentNode | null,
-  timeoutMs = 3_000,
+  timeoutMs = 1_500,
 ): () => void {
   const until = Date.now() + timeoutMs;
   let frame = 0;

@@ -26,7 +26,7 @@ import { egressShellEnvironment, splitProxyCredentials } from "./egress";
 const DEFAULT_TIMEOUT_MS = 120_000;
 /** A command has to be given long enough to start. Below this, a caller is asking for nothing. */
 const MIN_TIMEOUT_MS = 1_000;
-const MAX_TIMEOUT_MS = 600_000;
+const MAX_TIMEOUT_MS = 3_600_000;
 
 /**
  * How much output comes back.
@@ -34,7 +34,7 @@ const MAX_TIMEOUT_MS = 600_000;
  * A build log is megabytes and the model that reads this has a context window. Truncated at a size
  * a person can still read, and the result says it was truncated rather than quietly ending.
  */
-const MAX_OUTPUT_BYTES = 64 * 1024;
+const MAX_OUTPUT_BYTES = 1024 * 1024;
 
 export type ShellResult = {
   command: string;

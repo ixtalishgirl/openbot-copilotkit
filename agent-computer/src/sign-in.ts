@@ -51,7 +51,7 @@ export type SignInCodeResult = {
 };
 
 const LOGIN_ATTRIBUTE = "data-openbot-login";
-const STEP_TIMEOUT_MS = 15_000;
+const STEP_TIMEOUT_MS = 30_000;
 
 /** The origin of a URL, or empty for one that has none (`about:blank`). */
 export function originOfUrl(url: string): string {
@@ -223,12 +223,12 @@ async function submitFrom(page: Page, field: Locator) {
 }
 
 async function settle(page: Page) {
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(2_000);
   await page
     .waitForLoadState("load", { timeout: STEP_TIMEOUT_MS })
     .catch(() => undefined);
   await page
-    .waitForLoadState("networkidle", { timeout: 5_000 })
+    .waitForLoadState("networkidle", { timeout: 15_000 })
     .catch(() => undefined);
 }
 
@@ -303,7 +303,7 @@ export async function fillSignIn(
     let codeRequested = await page.evaluate(markCodeField, LOGIN_ATTRIBUTE);
     const refused = await passwordVisible(page);
     if (!codeRequested && !refused) {
-      await page.waitForTimeout(2_000);
+      await page.waitForTimeout(5_000);
       codeRequested = await page.evaluate(markCodeField, LOGIN_ATTRIBUTE);
     }
     if (codeRequested && originOfUrl(page.url()) !== input.origin)

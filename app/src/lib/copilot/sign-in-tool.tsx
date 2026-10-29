@@ -25,7 +25,7 @@ import { useComputerToolsOffered } from "./computer-available";
 
 /** How long the open chat waits for the person to answer. The server's request lasts as long. */
 const WAIT_MS = 15 * 60_000;
-const POLL_MS = 1_500;
+const POLL_MS = 750;
 
 /** Must match SIGN_IN_TOOL_DESCRIPTION in server/src/computer/headless-tools.ts. */
 const DESCRIPTION =

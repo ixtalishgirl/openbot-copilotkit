@@ -77,7 +77,7 @@ function PeoplePage() {
    */
   const [query, setQuery] = useState("");
   useEffect(() => {
-    const timer = setTimeout(() => setQuery(search), 250);
+    const timer = setTimeout(() => setQuery(search), 150);
     return () => clearTimeout(timer);
   }, [search]);
 

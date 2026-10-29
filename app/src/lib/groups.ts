@@ -60,7 +60,7 @@ export function groupQueryOptions(channelId: string) {
         (message) =>
           message.status === "running" || message.status === "queued",
       ) || awaitingFirstReply(query.state.data)
-        ? 1_500
+        ? 750
         : false,
   });
 }

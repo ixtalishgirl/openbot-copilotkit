@@ -1,6 +1,6 @@
-export const MAX_DICTATION_BYTES = 10 * 1024 * 1024;
-export const MAX_DICTATION_SECONDS = 120;
-export const DICTATION_TIMEOUT_MS = 60_000;
+export const MAX_DICTATION_BYTES = 50 * 1024 * 1024;
+export const MAX_DICTATION_SECONDS = 600;
+export const DICTATION_TIMEOUT_MS = 120_000;
 // Leave time for the API's timeout response to reach the browser through the app proxy.
 export const DICTATION_HTTP_IDLE_SECONDS = DICTATION_TIMEOUT_MS / 1000 + 10;
 

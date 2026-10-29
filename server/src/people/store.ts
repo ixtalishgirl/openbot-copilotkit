@@ -79,7 +79,7 @@ export type PeopleStore = {
 };
 
 /** How many people a page holds when the caller does not say. */
-const DEFAULT_PAGE = 50;
+const DEFAULT_PAGE = 100;
 
 /**
  * The most a caller may ask for in one page.
@@ -90,7 +90,7 @@ const DEFAULT_PAGE = 50;
  * Exported so the route parses against the same ceiling the store enforces, rather than the two
  * drifting apart unnoticed.
  */
-export const MAX_PAGE = 200;
+export const MAX_PAGE = 1000;
 
 /** Where a page stopped. Both halves of the sort, because either alone is ambiguous. */
 type Cursor = { lastSignedInAt: string | null; email: string };

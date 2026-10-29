@@ -28,7 +28,7 @@ type TrajectoryRefusal = {
 };
 
 /** One row per (person, trajectory, reason) in this window: a browser retrying a refused pass must not flood the trail. */
-const WINDOW_MS = 60_000;
+const WINDOW_MS = 120_000;
 /** The id is the caller's own text until it proves to be a UUID, so only its head is kept. */
 const TRAJECTORY_ID_AUDIT_CHARS = 64;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -145,9 +145,9 @@ export function createTrajectoryConnectHook(deps: {
 }
 
 /** Inside the runtime's 5 s selector deadline (`core/learning.ts` `resolveTrajectoryLearningContainerIds`). */
-const SELECTOR_BUDGET_MS = 4_000;
+const SELECTOR_BUDGET_MS = 8_000;
 /** The check is told to stop this long before the budget ends, so a probe it cuts short can still name its container. */
-const CHECK_STOP_EARLY_MS = 100;
+const CHECK_STOP_EARLY_MS = 200;
 
 /**
  * The ids a pass joins. Only a space that does not exist and could not be made, or no space at all, joins none: an

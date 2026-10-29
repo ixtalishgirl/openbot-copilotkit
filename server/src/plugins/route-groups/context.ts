@@ -233,7 +233,7 @@ class VendorTimeoutError extends Error {
  * byte holds the socket, the handler and the browser open for as long as it cares to, and no retry
  * limit, poll count or loop condition is ever reached because the first wait never ends.
  */
-const VENDOR_CALL_TIMEOUT_MS = 10_000;
+const VENDOR_CALL_TIMEOUT_MS = 30_000;
 
 /**
  * The same bound on ONE return-leg status poll, and tighter because a browser is held open on it.
@@ -241,14 +241,14 @@ const VENDOR_CALL_TIMEOUT_MS = 10_000;
  * Five polls at two seconds with four one-second pauses is a worst case of FOURTEEN seconds for the
  * whole wait, and that arithmetic is the point of stating both numbers here.
  */
-export const STATUS_CALL_TIMEOUT_MS = 2_000;
+export const STATUS_CALL_TIMEOUT_MS = 5_000;
 
 /**
  * At most five polls, pausing BETWEEN them — so four pauses, not five. NEVER the SDK's unbounded
  * `waitForCompletion`.
  */
-const STATUS_POLLS = 5;
-const STATUS_PAUSE_MS = 1000;
+const STATUS_POLLS = 10;
+const STATUS_PAUSE_MS = 500;
 
 /**
  * One outbound vendor call under a deadline, with an `AbortSignal` for the seams that take one.

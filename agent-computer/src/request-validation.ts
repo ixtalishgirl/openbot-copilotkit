@@ -11,7 +11,7 @@ import type { InputMessage } from "./screencast";
 export const EXEC_DEFAULT_TIMEOUT_MS = 120_000;
 /** A command has to be given long enough to start. Below this, a caller is asking for nothing. */
 export const EXEC_MIN_TIMEOUT_MS = 1_000;
-export const EXEC_MAX_TIMEOUT_MS = 600_000;
+export const EXEC_MAX_TIMEOUT_MS = 3_600_000;
 
 export type NavigateParseResult =
   | { ok: true; url: string }

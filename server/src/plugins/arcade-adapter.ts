@@ -209,7 +209,7 @@ async function vendorCall<T>(step: string, run: () => Promise<T>): Promise<T> {
  * while still being the only defence when one grows. At 100, every toolkit over 100 actions
  * crosses page boundaries on every read, so the completeness check stays a live check.
  */
-const CATALOGUE_PAGE_SIZE = 100;
+const CATALOGUE_PAGE_SIZE = 500;
 
 /**
  * How many per-toolkit action pages are in flight at once after page one has said how many there
@@ -223,9 +223,9 @@ const CATALOGUE_PAGE_SIZE = 100;
  * room for 32 remaining pages, a toolkit of ~3,300 actions — four times `GithubApi`. Past that is
  * the number to revisit.
  */
-const CATALOGUE_CONCURRENCY = 8;
+const CATALOGUE_CONCURRENCY = 16;
 /** A runaway guard, not a bound. */
-const CATALOGUE_MAX_PAGES = 1000;
+const CATALOGUE_MAX_PAGES = 2000;
 
 /**
  * Page size for the WHOLE-DIRECTORY listing `listApps` reads, which is the "Browse Arcade" screen.
@@ -254,7 +254,7 @@ const DIRECTORY_PAGE_SIZE = 1000;
  * `VENDOR_CALL_TIMEOUT_MS` up to 32 remaining pages — a directory of roughly 33,000 tools, four times
  * today's. Past that the listing will time out again, and that is the number to revisit.
  */
-const DIRECTORY_CONCURRENCY = 8;
+const DIRECTORY_CONCURRENCY = 16;
 
 /**
  * WHAT ARCADE ITSELF SENT: the parsed response body, and never the SDK's page object.
@@ -774,14 +774,14 @@ const FIELDS_REFUSAL =
 type ConnectionRow = Arcade.Admin.UserConnectionResponse;
 
 /** Page size for the auth-provider configuration listing. A short page ends it, as `listApps`. */
-const AUTH_PROVIDER_PAGE_SIZE = 100;
+const AUTH_PROVIDER_PAGE_SIZE = 500;
 /** A runaway guard, not a bound. */
-const AUTH_PROVIDER_MAX_PAGES = 100;
+const AUTH_PROVIDER_MAX_PAGES = 500;
 
 /** Page size for the user-connection listing. A short page ends it, as `listApps`. */
-const CONNECTION_PAGE_SIZE = 100;
+const CONNECTION_PAGE_SIZE = 500;
 /** A runaway guard, not a bound. */
-const CONNECTION_MAX_PAGES = 100;
+const CONNECTION_MAX_PAGES = 500;
 
 /**
  * The INSTANCE ids of every auth provider this project has configured of one TYPE.

@@ -281,8 +281,8 @@ export function applyChannelWork(
   };
 }
 
-const FIRST_RETRY_MS = 500;
-const MAX_RETRY_MS = 30_000;
+const FIRST_RETRY_MS = 250;
+const MAX_RETRY_MS = 10_000;
 
 function socketUrl() {
   return buildSocketUrl("/api/channels/events");

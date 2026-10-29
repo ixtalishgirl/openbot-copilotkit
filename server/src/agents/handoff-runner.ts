@@ -95,7 +95,7 @@ export type HandoffRunReport = {
  * Comfortably inside the lease, because a renewal that lands after it has lapsed is not a renewal:
  * the item has already gone to somebody else, and this one is now the second replica running it.
  */
-const RENEW_EVERY_MS = 20_000;
+const RENEW_EVERY_MS = 10_000;
 
 /**
  * How long a hop that is over is kept before it is dropped.
@@ -105,7 +105,7 @@ const RENEW_EVERY_MS = 20_000;
  * it. Both the finished ones and the ones that ran out of attempts: the second is a terminal state
  * somebody can query, and a day is long enough to query it in.
  */
-const REAP_OLDER_THAN_MS = 24 * 60 * 60 * 1_000;
+const REAP_OLDER_THAN_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export function createHandoffRunner(options: {
   queue: WorkQueue;
@@ -554,7 +554,7 @@ export function createHandoffRunner(options: {
  * that comes back with a book — an answer that size swamps the relaying run's prompt, and the
  * asking Bot was told what a good answer looks like precisely so this stays a paragraph.
  */
-const RELAY_ANSWER_LIMIT = 12_000;
+const RELAY_ANSWER_LIMIT = 50_000;
 
 function clip(answer: string): string {
   if (answer.length <= RELAY_ANSWER_LIMIT) return answer;

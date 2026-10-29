@@ -73,7 +73,7 @@ export function routineRunsQueryOptions(id: string) {
         fallback: "This routine's runs could not be loaded.",
       }),
     // A run in flight settles within minutes; poll so Running turns into its outcome.
-    refetchInterval: 5_000,
+    refetchInterval: 2_500,
   });
 }
 

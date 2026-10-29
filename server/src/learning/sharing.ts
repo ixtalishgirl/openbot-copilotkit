@@ -139,7 +139,7 @@ export type LearningSharingStore = ReturnType<
 >;
 
 /** How long a replica keeps the open-Skill index before reading it again. A change made on this replica is seen at once. */
-const INDEX_TTL_MS = 30_000;
+const INDEX_TTL_MS = 15_000;
 
 /**
  * What every person has opened, kept in memory so a run never asks the database (let alone each person's space) who

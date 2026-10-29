@@ -107,7 +107,7 @@ export function createDeliveryRouter(deps: {
     state: string;
   }): Promise<void>;
 }) {
-  const leaseMs = 60_000;
+  const leaseMs = 5 * 60_000;
   /**
    * Bindings with a paired chat turn open in this process. An approval or question raised during
    * that turn is shown in the turn itself (an OpenTag card, or text), so it is collected here rather

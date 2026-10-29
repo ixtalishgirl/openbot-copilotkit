@@ -57,7 +57,7 @@ export function createPersonResponseTick(deps: {
       const [item] = await approvalQueue.claim({
         kind: "person.response",
         owner: personResponseOwner,
-        leaseMs: 10 * 60_000,
+        leaseMs: 30 * 60_000,
         limit: 1,
         maxAttempts: 1,
       });

@@ -32,7 +32,7 @@ export class SnapshotRequiredError extends Error {
   }
 }
 export const NO_SECRET_PENDING = "Nothing is waiting for a secret.";
-export const HELP_REQUEST_TTL_MS = 10 * 60 * 1000;
+export const HELP_REQUEST_TTL_MS = 60 * 60 * 1000;
 export const SECRET_REQUEST_TTL_MS = HELP_REQUEST_TTL_MS;
 export const HUMAN_HAS_CONTROL =
   "A person has control or has been asked to take control. Wait for them to hand it back before acting.";
@@ -89,20 +89,20 @@ export function createControl(
   const active = (request: HandoffRequest | undefined) =>
     request?.status === "waiting" || request?.status === "taken";
   function persist() {
-    // Keep the current identity and the latest 32 terminal records. Their aliases expire together.
-    const cutoff = Date.parse(now()) - 30 * 24 * 60 * 60 * 1000;
+    // Keep the current identity and the latest 1000 records. Their aliases expire together.
+    const cutoff = Date.parse(now()) - 365 * 24 * 60 * 60 * 1000;
     const keep = data.requests
       .filter(
         (r) =>
           r.id === data.currentRequestId || Date.parse(r.updatedAt) >= cutoff,
       )
-      .slice(-33);
+      .slice(-1000);
     const ids = new Set(keep.map((r) => r.id));
     data.requests = keep;
     data.aliases = Object.fromEntries(
       Object.entries(data.aliases)
         .filter(([, id]) => ids.has(id))
-        .slice(-256),
+        .slice(-1024),
     );
     if (storageError) throw storageError;
     try {
@@ -321,10 +321,10 @@ export function createControl(
       expire();
       if (
         toolCallId !== undefined &&
-        (!toolCallId.trim() || toolCallId.length > 200)
+        (!toolCallId.trim() || toolCallId.length > 500)
       )
         throw new ControlRequestError(
-          "The tool call id must be a nonempty string of at most 200 characters.",
+          "The tool call id must be a nonempty string of at most 500 characters.",
         );
       const previous =
         toolCallId && Object.hasOwn(data.aliases, toolCallId)
@@ -353,7 +353,7 @@ export function createControl(
         toolCallId,
         reason:
           typeof reason === "string" && reason.trim()
-            ? reason.trim().slice(0, 500)
+            ? reason.trim().slice(0, 2000)
             : "The assistant needs a person to continue.",
         source,
         status: "waiting",
@@ -475,7 +475,7 @@ export function createControl(
       secret = {
         label:
           typeof input.label === "string" && input.label.trim()
-            ? input.label.trim().slice(0, 500)
+            ? input.label.trim().slice(0, 2000)
             : "the value this page is asking for",
         ref: input.ref.trim(),
         snapshotId:

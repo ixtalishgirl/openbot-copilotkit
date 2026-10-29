@@ -119,7 +119,7 @@ export function checkAgentEndpoint(
  * Three, which covers the ordinary shapes (`http` to `https`, a host rename, a trailing-slash
  * canonicalisation) and stops a chain that has no end.
  */
-const MAX_REDIRECTS = 3;
+const MAX_REDIRECTS = 5;
 
 /** An address this deployment will not dial, named so the person registering sees which hop. */
 export class EndpointNotAllowedError extends Error {

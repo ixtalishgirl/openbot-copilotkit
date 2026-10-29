@@ -61,7 +61,7 @@ export type SignInServiceDependencies = {
   ttlMs?: number;
 };
 
-const DEFAULT_TTL_MS = 15 * 60_000;
+const DEFAULT_TTL_MS = 60 * 60_000;
 const OPEN: readonly SignInStatus[] = [
   "pending",
   "code_required",
@@ -72,7 +72,7 @@ const OPEN: readonly SignInStatus[] = [
  * (75s), so a live attempt is never reopened under itself; a server that died mid-fill leaves the
  * request this long and no longer.
  */
-const FILLING_LEASE_MS = 120_000;
+const FILLING_LEASE_MS = 300_000;
 const FINAL: readonly SignInStatus[] = [
   "signed_in",
   "failed",

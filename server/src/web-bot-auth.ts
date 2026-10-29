@@ -31,7 +31,7 @@ export const DIRECTORY_CONTENT_TYPE =
  * How long a directory signature is good for. Each fetch is signed afresh, so this only has to
  * outlive a cache between the deployment and the verifier.
  */
-const DIRECTORY_SIGNATURE_TTL_SECONDS = 300;
+const DIRECTORY_SIGNATURE_TTL_SECONDS = 900;
 
 export type WebBotAuth = {
   /** `https://host`, the value Bots send in `Signature-Agent`; the directory lives under it. */

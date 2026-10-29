@@ -61,7 +61,7 @@ export function HandoffResumeNotice({
       setPending(
         stored && !hasActiveHandoff(botId, stored.requestId) ? stored : null,
       );
-      timer = setTimeout(() => void check(), 1000);
+      timer = setTimeout(() => void check(), 500);
     };
     void check();
     return () => {

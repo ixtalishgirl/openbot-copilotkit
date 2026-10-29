@@ -86,19 +86,19 @@ async function dispatch(routineRunId: string): Promise<void> {
 const options: RoutineSweepOptions = { routineStore, queue, dispatch, owner };
 
 /** How often both sweep phases run. A laptop's clock, standing in for the CronJob's schedule. */
-const TICK_MS = 30_000;
+const TICK_MS = 10_000;
 
 /*
  * How often the queue is purged of finished (and wedged) `routine.fire` items, in ticks rather than
  * milliseconds, so the two cadences cannot drift apart by editing one constant and not the other.
  *
- * Once every 120 ticks — roughly hourly at a 30-second tick — not once a tick. `queue.purge` deletes
- * rows older than the 24-hour window it is given below; running that DELETE every 30 seconds is three
+ * Once every 360 ticks — roughly hourly at a 10-second tick — not once a tick. `queue.purge` deletes
+ * rows older than the 24-hour window it is given below; running that DELETE every 10 seconds is three
  * orders of magnitude more query load than the window needs, for a retention job whose whole job is
  * to keep a day's worth of history. Hourly still purges comfortably inside the 24h window, with
  * enormous room to spare if a tick is ever missed.
  */
-const PURGE_EVERY_N_TICKS = 120;
+const PURGE_EVERY_N_TICKS = 360;
 const PURGE_OLDER_THAN_MS = 24 * 60 * 60 * 1000;
 
 function sleep(ms: number): Promise<void> {

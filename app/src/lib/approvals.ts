@@ -81,7 +81,7 @@ export const approvalInboxOptions = () =>
       });
       return response.json();
     },
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
   });
 export const decideApproval = (id: string, decision: ApprovalDecision) =>
   client(`/api/approvals/${encodeURIComponent(id)}/decision`, {

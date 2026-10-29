@@ -74,10 +74,10 @@ const providerTokenPatterns: RegExp[] = [
   /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/,
 ];
 
-const MAX_NODES = 2_000;
-const MAX_DEPTH = 20;
-const MAX_FINDINGS = 20;
-const MAX_STRING_LENGTH = 64 * 1024;
+const MAX_NODES = 10_000;
+const MAX_DEPTH = 50;
+const MAX_FINDINGS = 100;
+const MAX_STRING_LENGTH = 256 * 1024;
 
 function normalizedFieldName(value: string): string {
   const normalized = value.toLowerCase().replace(/[-.\s]/g, "_");

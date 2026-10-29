@@ -57,7 +57,7 @@ export function createApprovalResumeTick(deps: {
       const [item] = await approvalQueue.claim({
         kind: "approval.resume",
         owner: approvalOwner,
-        leaseMs: 15 * 60_000,
+        leaseMs: 30 * 60_000,
         limit: 1,
       });
       if (!item) return;

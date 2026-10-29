@@ -10,7 +10,7 @@ const HANDOFF_PATH = "/api/auth/organization/session";
 /** How long the organization session cookie lasts, in seconds: its Max-Age, set once at the handoff and never renewed,
  * so a person signs in to their organization again after this. The cookie says when it expires (`expiresAt`), and a
  * Recorder connection made with it ends then too (recorder/wiring.ts), since it carries a sealed copy of it. */
-export const ORGANIZATION_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+export const ORGANIZATION_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const COOKIE_AGE = ORGANIZATION_SESSION_MAX_AGE_SECONDS;
 /** What the person is told when their sign-out could not end everything they were signed in with, and so did not happen. */
 export const SIGN_OUT_UNFINISHED = "Signing out did not finish. Try again.";

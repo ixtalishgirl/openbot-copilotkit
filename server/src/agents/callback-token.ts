@@ -42,7 +42,7 @@ const RUN_LABEL = "openbot:agent-run";
  * A run is not instant: a Bot may answer, call a tool, read the result and call another. Ten minutes
  * covers a slow tool loop with room to spare, and bounds what a captured assertion is worth.
  */
-const RUN_TTL_MS = 10 * 60 * 1000;
+const RUN_TTL_MS = 60 * 60 * 1000;
 
 export function mintCallbackToken(): string {
   return `${TOKEN_PREFIX}${randomBytes(TOKEN_BYTES).toString("base64url")}`;

@@ -33,9 +33,9 @@ import {
 
 export const PROACTIVE_RUN_KIND = "proactive.run";
 export const PROACTIVE_TASK_KIND = "proactive.task";
-const RUN_LEASE_MS = 10 * 60_000;
-/** A person pressing "Run now" twice in a minute gets one run. */
-const RUN_NOW_GAP_MS = 10 * 60_000;
+const RUN_LEASE_MS = 30 * 60_000;
+/** A person pressing "Run now" twice in two minutes gets one run. */
+const RUN_NOW_GAP_MS = 2 * 60_000;
 
 export type ProactiveScope = {
   ownerUserId: string;

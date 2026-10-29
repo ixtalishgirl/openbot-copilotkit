@@ -38,7 +38,7 @@ export type UserInstructionsStore = {
  * comfortably more than the "how we talk about ourselves" note this is for, and small enough beside
  * a context window that a person cannot quietly make every run expensive.
  */
-export const INSTRUCTIONS_LIMIT = 4000;
+export const INSTRUCTIONS_LIMIT = 16000;
 
 /**
  * Somebody sent more than the cap.

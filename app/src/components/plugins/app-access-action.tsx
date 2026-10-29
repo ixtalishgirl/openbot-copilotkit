@@ -271,7 +271,7 @@ function OwnerGiveAction({
     if (!waiting) return;
     const timer = setInterval(() => {
       void queryClient.invalidateQueries({ queryKey: appAccessKeys.all });
-    }, 2_000);
+    }, 1_000);
     return () => clearInterval(timer);
   }, [waiting]);
 
@@ -372,7 +372,7 @@ function ConnectAction({ access }: { access: AppAccess }) {
     if (!waiting) return;
     const timer = setInterval(() => {
       void queryClient.invalidateQueries({ queryKey: appAccessKeys.all });
-    }, 2_000);
+    }, 1_000);
     return () => clearInterval(timer);
   }, [waiting]);
   const waited = useRef(false);

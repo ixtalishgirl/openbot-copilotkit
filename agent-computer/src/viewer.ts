@@ -9,7 +9,7 @@ import type { Screencast } from "./screencast";
  * process, so the Bot would read as watched forever and its session could never be swept, which is
  * the unbounded growth that sweep exists to stop, arriving through the fix for it.
  */
-const STOP_BUDGET_MS = 5_000;
+const STOP_BUDGET_MS = 10_000;
 
 /**
  * Who owns a Bot's live screen, and what may still act on it.

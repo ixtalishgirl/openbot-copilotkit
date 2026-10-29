@@ -47,7 +47,7 @@ export class HeadlessToolSuspension extends Error {
   }
 }
 
-const MAX_TOOL_SEGMENTS = 30;
+const MAX_TOOL_SEGMENTS = 100;
 
 /**
  * Executes AG-UI client tools inside the Intelligence run. Backend results are

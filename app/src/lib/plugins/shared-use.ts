@@ -56,7 +56,7 @@ export function sharedUseRequestsQueryOptions(enabled: boolean) {
         fallback: "Couldn't load shared account requests.",
       }),
     enabled,
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
   });
 }
 

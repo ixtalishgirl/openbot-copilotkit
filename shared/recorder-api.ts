@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const RECORDER_TOKEN_PREFIX = "obr_";
 export const RECORDER_CODE_PREFIX = "obc_";
-export const RECORDER_CONNECT_CODE_TTL_MS = 5 * 60_000;
+export const RECORDER_CONNECT_CODE_TTL_MS = 30 * 60_000;
 /** The `code` on every 401 the recorder bearer gets. Only this code means "signed out". */
 export const RECORDER_SIGNED_OUT = "RECORDER_SIGNED_OUT";
 /** The `code` on the 503 the recorder guard and the trajectory gate answer when the organization's sign-in server could not

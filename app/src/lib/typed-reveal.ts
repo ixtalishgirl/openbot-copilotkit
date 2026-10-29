@@ -7,8 +7,8 @@ import { useEffect, useRef, useState } from "react";
  */
 
 /** Per character, not per title, so every length types at the same speed. Capped so none outstays. */
-export const TYPING_SECONDS_PER_CHARACTER = 0.014;
-export const TYPING_MAX_SECONDS = 0.45;
+export const TYPING_SECONDS_PER_CHARACTER = 0.007;
+export const TYPING_MAX_SECONDS = 0.25;
 
 export function typingSeconds(length: number): number {
   return Math.min(length * TYPING_SECONDS_PER_CHARACTER, TYPING_MAX_SECONDS);

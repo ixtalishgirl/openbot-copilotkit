@@ -52,7 +52,7 @@ type RememberedTurn = {
   asked?: boolean;
 };
 const REMEMBERED_TURNS = new Map<string, RememberedTurn>();
-const MAX_REMEMBERED_TURNS = 40;
+const MAX_REMEMBERED_TURNS = 80;
 
 function rememberTurn(toolCallId: string, patch: RememberedTurn): void {
   const existing = REMEMBERED_TURNS.get(toolCallId) ?? {};
@@ -102,19 +102,19 @@ function capitalise(text: string): string {
  * opened on "Can't show the screen right now… ask an admin", in front of a person whose computer was
  * doing exactly what it should. Past the server's own wait for a cold start, with room to spare.
  */
-const STARTUP_GRACE_MS = 150_000;
+const STARTUP_GRACE_MS = 60_000;
 
 /** How often a computer that has not drawn a frame yet is asked where it is. */
-const STATUS_POLL_MS = 2_000;
+const STATUS_POLL_MS = 500;
 
 /** Identical frames in a row that mean the page has stopped changing. */
-const SETTLED_FRAMES = 3;
+const SETTLED_FRAMES = 2;
 
 /** Hard cap for post-action polling on pages that never settle. */
-const SETTLE_TIMEOUT_MS = 30_000;
+const SETTLE_TIMEOUT_MS = 10_000;
 
 /** Short confirmation window after a secret is sent to the page. */
-const SECRET_CONFIRM_MS = 6_000;
+const SECRET_CONFIRM_MS = 3_000;
 
 /**
  * What the frame says when there is no picture in it.
@@ -253,7 +253,7 @@ type Props = {
 export function ComputerView({
   computerId,
   active = true,
-  intervalMs = 1000,
+  intervalMs = 250,
   aspectRatio = DEFAULT_ASPECT_RATIO,
   minWidth = DEFAULT_MIN_WIDTH,
   minHeight = DEFAULT_MIN_HEIGHT,

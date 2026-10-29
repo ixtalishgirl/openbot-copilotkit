@@ -531,7 +531,7 @@ export function builtInAgentConfiguration(
  * Enough for a Bot to search, read what came back, search again on a better term, and answer.
  * Beyond that a model is not making progress, and every extra step is somebody's money.
  */
-const TOOL_STEPS = 8;
+const TOOL_STEPS = 25;
 
 /**
  * Build the built-in and remote AG-UI agent map the runtime serves.

@@ -33,15 +33,15 @@ const GRANT = { user: "read-write", project: "none" } as const;
 const KIND = "topical";
 
 /** How long a known answer about whether memory is available is reused. */
-const AVAILABLE_TTL_MS = 10 * 60_000;
+const AVAILABLE_TTL_MS = 20 * 60_000;
 /** How long a failure holds memory on the local store before Intelligence is asked again. */
-const FAILURE_TTL_MS = 60_000;
+const FAILURE_TTL_MS = 120_000;
 /**
  * How long a person's list is reused. Every turn reads it for the memory context, so without this
  * each turn would wait on a platform round trip. Any write of that person's through this client
  * clears it, so OpenBot's own changes show at once; a memory another app adds shows within this.
  */
-const LIST_TTL_MS = 30_000;
+const LIST_TTL_MS = 60_000;
 
 export type IntelligenceMemory = {
   /** Whether Intelligence memory is entitled and reachable right now. Never throws. */

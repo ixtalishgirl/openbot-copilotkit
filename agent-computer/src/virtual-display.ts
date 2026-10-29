@@ -21,8 +21,8 @@ export type VirtualDisplay = {
   stop: () => Promise<void>;
 };
 
-const READY_BUDGET_MS = 5_000;
-const STOP_BUDGET_MS = 2_000;
+const READY_BUDGET_MS = 15_000;
+const STOP_BUDGET_MS = 5_000;
 
 async function allocatedDisplay(stream: Readable): Promise<string> {
   let response = "";

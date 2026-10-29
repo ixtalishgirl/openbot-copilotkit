@@ -61,7 +61,7 @@ export function sandboxedListQueryOptions() {
 export function publishedSandboxedQueryOptions() {
   return queryOptions({
     queryKey: sandboxedKeys.published(),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
     queryFn: async (): Promise<PublishedSandboxed[]> => {
       return (
         (await client("/api/sandboxed/published", "components", {

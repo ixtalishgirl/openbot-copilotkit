@@ -203,11 +203,11 @@ export type PersonalSkillSources = {
 };
 
 /** The longest a run waits for a person's or an opened space before going on without it. Its refresh carries on. */
-const PERSONAL_WAIT_MS = 2_000;
+const PERSONAL_WAIT_MS = 1_000;
 /** How long Settings, Learning waits for the person's own Skills. */
-const PERSONAL_READ_MS = 5_000;
+const PERSONAL_READ_MS = 2_500;
 /** A space that refused (missing, revoked, not entitled, unreadable) is not asked again by runs for this long. */
-const PERSONAL_RETRY_MS = 60_000;
+const PERSONAL_RETRY_MS = 30_000;
 
 export function createLearningRuntime(options: {
   store: LearningSettingsStore;

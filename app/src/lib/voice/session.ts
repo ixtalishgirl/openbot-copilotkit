@@ -120,7 +120,7 @@ export class VoiceSession {
         this.fail(
           "The call took too long to connect. Check microphone permission and try again.",
         );
-    }, 30_000);
+    }, 15_000);
     try {
       const context = await this.deps.context();
       if (!current()) return;

@@ -500,7 +500,7 @@ function conversationOnly(messages: readonly unknown[]): readonly unknown[] {
  * Six messages is about three exchanges: enough for the relaying Bot to keep its footing in the
  * conversation it is speaking into, and small enough that the read never grows with the channel.
  */
-const RELAY_CONTEXT_MESSAGES = 6;
+const RELAY_CONTEXT_MESSAGES = 20;
 
 /**
  * How often the conversation's lock is refreshed while a Bot is working.
@@ -508,7 +508,7 @@ const RELAY_CONTEXT_MESSAGES = 6;
  * Comfortably inside the platform's window, because a renewal that lands after it has lapsed is not
  * a renewal: the conversation is already free and something else may be in it.
  */
-const LOCK_RENEW_EVERY_MS = 30_000;
+const LOCK_RENEW_EVERY_MS = 15_000;
 
 /**
  * How long one hop may run for by default.
@@ -519,7 +519,7 @@ const LOCK_RENEW_EVERY_MS = 30_000;
  * wait a quarter of an hour to be told it was not, and the conversation stays locked for every
  * second of it.
  */
-const DEFAULT_DELIVERY_DEADLINE_MS = 5 * 60_000;
+const DEFAULT_DELIVERY_DEADLINE_MS = 15 * 60_000;
 
 /**
  * Wait for the run to be over, and fail if it failed.

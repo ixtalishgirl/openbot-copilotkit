@@ -89,7 +89,7 @@ export function LiveWaveform({
     resize();
     const draw = (time: number) => {
       frame = requestAnimationFrame(draw);
-      if (time - lastUpdate < (reduceMotion ? 120 : 30)) return;
+      if (time - lastUpdate < (reduceMotion ? 120 : 16)) return;
       lastUpdate = time;
       if (analyser && samples) analyser.getByteFrequencyData(samples);
       context.clearRect(0, 0, width, height);

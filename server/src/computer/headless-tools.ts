@@ -32,6 +32,11 @@ export type HeadlessSignInRequester = {
 export const SIGN_IN_TOOL_DESCRIPTION =
   "Ask the person you work for to sign you in to a website. They get a private sign-in form outside this conversation (or take over the browser), and their login is typed straight into your browser by the computer. You never see the username, password or code, and must never ask for them any other way. Open the site's sign-in page first, then call this with the site's address. This turn pauses until they answer; you are then told only whether it worked.";
 
+/** Quote one shell word for /bin/bash -c. */
+function shQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 /** Shipped browser/file/command tools, with identity bound before the model supplies arguments. */
 export function createHeadlessComputerTools(options: {
   gateway: ComputerGateway;
@@ -113,13 +118,21 @@ export function createHeadlessComputerTools(options: {
       z.strictObject({ url: text }),
       async ({ url }, { toolCallId }) => {
         const result = await gateway.navigate(botId, actor, url, toolCallId);
-        if (result.challenge)
+        if (result.challenge) {
+          const requestId = result.challenge.requestId;
+          if (requestId?.startsWith("bot:")) {
+            // Bot self-solve challenge: no person request exists for a bot:
+            // requestId, so never suspend the turn — return the challenge info
+            // unresolved so the bot keeps working it with its own tools.
+            return { ok: true, ...result, challengeResolved: false };
+          }
           throw new HeadlessToolSuspension(result.challenge.reason, {
             kind: "computer_handoff",
             botId,
-            requestId: result.challenge.requestId,
+            requestId,
             source: result.challenge.kind,
           });
+        }
         return { ok: true, ...result };
       },
     ),
@@ -228,6 +241,88 @@ export function createHeadlessComputerTools(options: {
       async (input, { signal }) => ({
         ok: true,
         ...(await gateway.runCommand(botId, actor, input, signal)),
+      }),
+    ),
+    // First-class workflow tools. Each builds a bash command and runs it through the same
+    // gateway.runCommand mechanism as computer_run_command, so approvals, audit and the shell
+    // pipeline are identical to a hand-typed command.
+    tool(
+      "python_exec",
+      "Run Python 3 code in your workspace; the code is fed to python3 on stdin.",
+      z.strictObject({ code: text }),
+      async ({ code }, { signal }) => {
+        const marker = `PYEOF_${Math.random().toString(36).slice(2, 10)}`;
+        return {
+          ok: true,
+          ...(await gateway.runCommand(
+            botId,
+            actor,
+            { command: `python3 - <<'${marker}'\n${code}\n${marker}` },
+            signal,
+          )),
+        };
+      },
+    ),
+    tool(
+      "pip_install",
+      "Install Python packages with pip; names are space-separated.",
+      z.strictObject({ packages: text }),
+      async ({ packages }, { signal }) => ({
+        ok: true,
+        ...(await gateway.runCommand(
+          botId,
+          actor,
+          { command: `python3 -m pip install ${packages}` },
+          signal,
+        )),
+      }),
+    ),
+    tool(
+      "git",
+      "Run a git command in your workspace: clone, pull, status.",
+      z.strictObject({ args: text }),
+      async ({ args }, { signal }) => ({
+        ok: true,
+        ...(await gateway.runCommand(
+          botId,
+          actor,
+          { command: `git ${args}` },
+          signal,
+        )),
+      }),
+    ),
+    tool(
+      "file_download",
+      "Download a URL to a file path in your workspace using curl.",
+      z.strictObject({ url: text, path: text }),
+      async ({ url, path }, { signal }) => ({
+        ok: true,
+        ...(await gateway.runCommand(
+          botId,
+          actor,
+          { command: `curl -fsSL -o ${shQuote(path)} ${shQuote(url)}` },
+          signal,
+        )),
+      }),
+    ),
+    tool(
+      "file_upload",
+      "Upload a workspace file to a URL with a multipart POST using curl.",
+      z.strictObject({
+        path: text,
+        url: text,
+        field: z.string().min(1).optional(),
+      }),
+      async ({ path, url, field }, { signal }) => ({
+        ok: true,
+        ...(await gateway.runCommand(
+          botId,
+          actor,
+          {
+            command: `curl -fsSL -F ${shQuote(`${field ?? "file"}=@${path}`)} ${shQuote(url)}`,
+          },
+          signal,
+        )),
       }),
     ),
     tool(

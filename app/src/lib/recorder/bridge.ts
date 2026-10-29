@@ -50,7 +50,7 @@ type ConnectCodeAnswer =
     }
   | { ok: false; error: string; retryAfterMs?: number };
 
-const DEFAULT_DETECT_TIMEOUT_MS = 1500;
+const DEFAULT_DETECT_TIMEOUT_MS = 500;
 
 function chromeOf(): ExtensionMessaging | undefined {
   return (globalThis as { chrome?: ExtensionMessaging }).chrome;

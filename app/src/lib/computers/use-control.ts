@@ -117,7 +117,7 @@ function createControlStore(computerId: string): ControlStore {
         if (!snapshot.busy) void refresh();
         timer = setInterval(() => {
           if (!snapshot.busy && !reading) void refresh();
-        }, 1000);
+        }, 500);
       }
       return () => {
         listeners.delete(listener);

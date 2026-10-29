@@ -53,7 +53,7 @@ export function ConnectAppCard({
   const connections = useQuery({
     ...connectionsQueryOptions(),
     // Only while a consent is open in the other tab; otherwise this is an ordinary cached read.
-    refetchInterval: waiting ? 2_000 : false,
+    refetchInterval: waiting ? 1_000 : false,
   });
   /*
    * A ROW IS NOT ACCESS, which is the whole reason `revoked` is read here. Withdrawing somebody's

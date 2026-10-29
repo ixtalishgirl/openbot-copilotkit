@@ -90,9 +90,9 @@ const STORE_NOT_OPENED =
 export const LINUX_HANDOFF = 'exec </dev/null >/dev/null 2>&1; "$@" &';
 
 /** How long one command may take. Each hands the browser on and exits; one that does not is not waited for. */
-const COMMAND_MS = 15_000;
+const COMMAND_MS = 60_000;
 /** How much of a command's output is kept: enough for `reg query` and a refusal. */
-const OUTPUT_LIMIT = 16 * 1024;
+const OUTPUT_LIMIT = 256 * 1024;
 
 /**
  * The store pages the Recorder can be added from, and nothing else: the address is opened in the

@@ -12,7 +12,7 @@ import type { LearningAutoAssign } from "./auto-assign";
 import { type LearningSettingsStore, parseLearningSettings } from "./settings";
 
 /** The longest the settings page waits for an automatic check before answering without it. */
-const AUTO_ASSIGN_WAIT_MS = 3_000;
+const AUTO_ASSIGN_WAIT_MS = 1_500;
 
 type InspectorSnapshot = Awaited<
   ReturnType<CopilotKitIntelligence["getInspectorLearning"]>

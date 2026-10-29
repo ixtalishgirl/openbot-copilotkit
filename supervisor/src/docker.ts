@@ -58,20 +58,20 @@ const COMPUTER_HEALTHCHECK = {
     `bun -e "const r = await fetch('http://localhost:${COMPUTER_PORT.split("/")[0]}/health'); process.exit(r.ok ? 0 : 1)"`,
   ],
   // Nanoseconds, which is what the API takes. The same numbers the Dockerfile states.
-  Interval: 2_000_000_000,
+  Interval: 1_000_000_000,
   Timeout: 3_000_000_000,
   StartPeriod: 2_000_000_000,
-  Retries: 30,
+  Retries: 60,
 };
 
 /**
  * How many times `ensure` will build a computer before giving up.
  *
- * One retry, because the only thing being retried is losing a race to another request for the same
- * Bot. A second loss means something else is removing the container, and retrying forever would hide
- * that behind a hung request.
+ * Two retries, because the only thing being retried is losing a race to another request for the
+ * same Bot. A third loss means something else is removing the container, and retrying forever would
+ * hide that behind a hung request.
  */
-const ATTEMPTS = 2;
+const ATTEMPTS = 3;
 
 function statusOf(error: unknown): number | undefined {
   return (error as { statusCode?: number }).statusCode;
@@ -337,7 +337,7 @@ function holdsCurrentToken(
 }
 
 /** Long enough for a cold start with a large image, short enough that a caller is not left hanging. */
-const DEFAULT_READY_TIMEOUT_MS = 60_000;
+const DEFAULT_READY_TIMEOUT_MS = 300_000;
 
 /**
  * Wait until the computer actually answers.
@@ -374,7 +374,7 @@ async function waitUntilAnswering(
     } catch {
       // Mid-creation, or gone. The deadline is what ends this.
     }
-    await pause(250);
+    await pause(100);
   }
 
   /*
@@ -395,10 +395,8 @@ export type EnsureOptions = {
   /** A network to join, when the supervisor runs alongside a compose stack. */
   network?: string;
   /**
-   * The container runtime. Left unset this is Docker's default, which shares the host kernel.
-   * Setting `runsc` runs each computer under gVisor, which intercepts syscalls in user space and is
-   * the pragmatic middle ground for untrusted Bot code. A deployment that wants a kernel per Bot
-   * points this at a microVM runtime instead.
+   * Ignored. MONSTER REBUILD (owner order): the gVisor `runsc` runtime path is removed entirely;
+   * computers run on Docker's default runtime. Kept on the type only so existing callers compile.
    */
   runtime?: string;
   memoryBytes?: number;
@@ -412,9 +410,9 @@ export type EnsureOptions = {
   readyTimeoutMs?: number;
   pidsLimit?: number;
   /**
-   * The volume holding the SPIRE agent's Workload API socket, mounted read-only into each computer
-   * so it can ask what it is. Unset means no identity, which is a deployment choice rather than a
-   * failure.
+   * Removed. MONSTER REBUILD (owner order): the SPIRE agent socket volume is gone with SPIRE;
+   * computers authenticate with the shared COMPUTER_TOKEN. Kept on the type only so existing
+   * callers compile.
    */
   spireSocketVolume?: string;
 };
@@ -433,10 +431,7 @@ function hostConfig(names: ComputerNames, options: EnsureOptions) {
     Binds: [
       `${names.profileVolume}:/profiles`,
       `${names.workspaceVolume}:/workspace`,
-      // Read-only: a computer asks the agent what it is and has nothing to tell it.
-      ...(options.spireSocketVolume
-        ? [`${options.spireSocketVolume}:/tmp/spire-agent/public:ro`]
-        : []),
+      // MONSTER REBUILD (owner order): the SPIRE agent socket mount is removed with SPIRE.
     ],
     // On a shared network the computers are reached by name and nothing is published: a remote host
     // should not accumulate an open port per Bot. Off a network, a laptop, where the server runs
@@ -455,7 +450,7 @@ function hostConfig(names: ComputerNames, options: EnsureOptions) {
         }),
     RestartPolicy: { Name: "unless-stopped" },
     ...(options.network ? { NetworkMode: options.network } : {}),
-    ...(options.runtime ? { Runtime: options.runtime } : {}),
+    // MONSTER REBUILD (owner order): the gVisor runsc runtime path is removed; options.runtime is ignored.
 
     // No path from inside to more privilege than it started with, whatever it manages to run.
     SecurityOpt: ["no-new-privileges:true"],
@@ -463,7 +458,7 @@ function hostConfig(names: ComputerNames, options: EnsureOptions) {
     CapDrop: ["ALL"],
     // A runaway Bot is a resource problem for itself, not for every other Bot on the host.
     ...(options.memoryBytes ? { Memory: options.memoryBytes } : {}),
-    PidsLimit: options.pidsLimit ?? 512,
+    PidsLimit: options.pidsLimit ?? 2048,
     // Chromium's sandbox wants shared memory and will crash on the 64MB default.
     ShmSize: 1_073_741_824,
   };
@@ -533,8 +528,7 @@ export async function ensure(
         await docker.createContainer({
           name: names.container,
           Image: options.image,
-          // The Bot id is a label because that is what a SPIRE docker workload attestor selects on:
-          // an identity per Bot then falls out of the same fact that names the container.
+          // The Bot id is a label so a computer can be told apart from the next one.
           Labels: labelsFor(names),
           Env: options.environment,
           ExposedPorts: { [COMPUTER_PORT]: {} },
@@ -581,7 +575,7 @@ export async function ensure(
          * for the same question.
          */
         if (status === 404 && attempt > 1) {
-          await pause(250);
+          await pause(100);
           continue;
         }
         // 304 is "already running", which is success for an idempotent verb.

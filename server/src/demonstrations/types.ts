@@ -50,7 +50,7 @@ export const demonstrationActionSchema = z
   .strict();
 export type DemonstrationAction = z.infer<typeof demonstrationActionSchema>;
 /** A demonstration records at most ten minutes; the server stops it at this bound. */
-export const DEMONSTRATION_MAX_DURATION_MS = 10 * 60 * 1000;
+export const DEMONSTRATION_MAX_DURATION_MS = 60 * 60 * 1000;
 /** When a recording started at `createdAt` is stopped by the server. */
 export function demonstrationExpiresAt(createdAt: Date): Date {
   return new Date(createdAt.getTime() + DEMONSTRATION_MAX_DURATION_MS);

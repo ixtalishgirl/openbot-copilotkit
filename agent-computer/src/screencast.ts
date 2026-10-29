@@ -141,7 +141,12 @@ export type Screencast = {
 export async function startScreencast(
   page: Page,
   onFrame: (frame: FrameMessage) => void,
-  options: { maxWidth?: number; maxHeight?: number; quality?: number } = {},
+  options: {
+    maxWidth?: number;
+    maxHeight?: number;
+    quality?: number;
+    everyNthFrame?: number;
+  } = {},
 ): Promise<Screencast> {
   const client: CDPSession = await page.context().newCDPSession(page);
   let stopped = false;
@@ -171,11 +176,11 @@ export async function startScreencast(
 
   await client.send("Page.startScreencast", {
     format: "jpeg",
-    quality: options.quality ?? 70,
-    maxWidth: options.maxWidth ?? 1280,
-    maxHeight: options.maxHeight ?? 800,
+    quality: options.quality ?? 50,
+    maxWidth: options.maxWidth ?? 1920,
+    maxHeight: options.maxHeight ?? 1200,
     // One frame per change, not per interval. Chrome decides when something moved.
-    everyNthFrame: 1,
+    everyNthFrame: options.everyNthFrame ?? 2,
   });
 
   return {

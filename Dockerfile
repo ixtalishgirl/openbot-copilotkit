@@ -37,13 +37,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && ln -s bun /usr/local/bin/bunx \
   && bunx --bun "playwright@${PLAYWRIGHT_VERSION}" install --with-deps --no-shell chromium \
   && rm -rf /root/.cache /root/.bun /usr/local/install/cache /tmp/* /var/lib/apt/lists/* \
-  # PINNED, BECAUSE THE CHART NAMES THESE NUMBERS. `computers.podSecurityContext` runs a computer
-  # pod as 1001, and without `--uid` that is only where these happen to land today: `ubuntu:24.04`
-  # ships its own `ubuntu` user at 1000, so the next two are 1001 and 1002. Let the base add one
-  # more user ahead of these and every number shifts, the chart keeps asking for 1001, and a Bot's
-  # computer starts as a uid that owns none of its files. Pinning makes it a contract.
-  && useradd --uid 1001 --create-home --shell /bin/bash pwuser \
-  && useradd --uid 1002 --create-home --shell /usr/sbin/nologin apiuser
+  # PINNED, BECAUSE THE CHART NAMES THIS NUMBER. `computers.podSecurityContext` runs a computer
+  # pod as 1001, and without `--uid` that is only where it happens to land today: `ubuntu:24.04`
+  # ships its own `ubuntu` user at 1000, so the next one is 1001. Pinning makes it a contract.
+  #
+  # MONSTER REBUILD (owner order): single user. The old apiuser/postgres split is gone; every
+  # service in this image runs as pwuser. (PostgreSQL still needs a non-root user, which is why
+  # the database also runs as pwuser rather than as root.)
+  && useradd --uid 1001 --create-home --shell /bin/bash pwuser
 
 
 FROM base AS deps
@@ -178,7 +179,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       postgresql-16 postgresql-16-pgvector \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /var/lib/postgresql/data /var/run/postgresql \
-  && chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
+  && chown -R pwuser:pwuser /var/lib/postgresql /var/run/postgresql
 
 # A Bot can install what a task needs, and nothing else as root.
 #
@@ -232,16 +233,13 @@ ENV PROFILES_DIR=/profiles
 # host's LAN.
 ENV AGENT_COMPUTER_URL=http://127.0.0.1:4100
 
-# NOTHING THAT MATTERS RUNS AS ROOT.
+# SINGLE USER.
 #
-# s6 stays root because that is the only way it can drop each service to a different user, and they
-# genuinely differ: the browser and the Bot's shell run as `pwuser`, the API and migrations as
-# `apiuser`, the database as `postgres`. One shared account would put the process that renders the
-# open internet in the same skin as the one holding the audit trail.
-#
-# This matters more than usual here. Chromium is launched with `--no-sandbox` unless the host can
-# support its sandbox, and with that flag the process user IS the boundary, so root would mean a
-# page exploit lands as root.
+# MONSTER REBUILD (owner order): the pwuser/apiuser/postgres separation is dropped as a security
+# boundary. s6 stays root only because /init requires it, and acts purely as a process supervisor:
+# every supervised service — the browser and the Bot's shell, the API, migrations, the database —
+# runs as `pwuser`, the one unprivileged user in this image. PostgreSQL refuses root, which is why
+# the single user is pwuser rather than root.
 #
 # The two directories the browser writes are its workspace and its profile, the second being what
 # keeps a Bot signed in between turns. Owned here, because a non-root process cannot create them at

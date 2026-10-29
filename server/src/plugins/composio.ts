@@ -65,7 +65,7 @@ export const VERSION_ARG = "__version";
  * `./composio-adapter` follows them to the end. A listing of exactly this many rows is now an app
  * with a lot of actions, and nothing is truncated by it.
  */
-export const LISTING_LIMIT = 1000;
+export const LISTING_LIMIT = 5000;
 
 /** One action, as much of Composio's listing as anything here reads. */
 export type ComposioAction = {
@@ -363,7 +363,7 @@ function schemaNode(value: unknown): Record<string, unknown> | null {
  * publishes is an attachment descriptor three or four in. A toolkit that genuinely needs 65 is a
  * vendor change to read rather than a number to raise.
  */
-const SCHEMA_DEPTH = 64;
+const SCHEMA_DEPTH = 128;
 
 /**
  * What the walk below answers: whether a schema stages a file, or why that could not be settled.

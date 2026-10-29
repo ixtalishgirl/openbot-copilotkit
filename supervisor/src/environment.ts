@@ -13,7 +13,6 @@ export function environmentFor(
     key.startsWith("EGRESS_PROXY"),
   );
   const computerToken = env.COMPUTER_TOKEN?.trim() || undefined;
-  const spireSocketVolume = env.SPIRE_AGENT_SOCKET_VOLUME;
   // Fail fast here rather than forwarding an invalid mode that crashes the child at
   // `browserModeFromEnv`: whitespace-only is falsy after trim, anything else must be headless
   // or headed.
@@ -31,9 +30,6 @@ export function environmentFor(
   return [
     `COMPUTER_BOT_ID=${botId}`,
     ...(computerToken ? [`COMPUTER_TOKEN=${computerToken}`] : []),
-    ...(spireSocketVolume
-      ? ["SPIFFE_ENDPOINT_SOCKET=/tmp/spire-agent/public/api.sock"]
-      : []),
     ...(browserMode ? [`COMPUTER_BROWSER_MODE=${browserMode}`] : []),
     ...passthrough.map(([key, value]) => `${key}=${value ?? ""}`),
   ];

@@ -28,7 +28,7 @@ import type { BrowserContext, Cookie } from "playwright";
 export const SESSION_COOKIES_FILE = "openbot-session-cookies.json";
 
 /** How often a running browser's session cookies are checked and, when they changed, written. */
-export const SESSION_COOKIE_SAVE_MS = 30_000;
+export const SESSION_COOKIE_SAVE_MS = 10_000;
 
 /** Playwright reports a cookie with no expiry as `expires: -1`. */
 export function isSessionCookie(cookie: Cookie): boolean {

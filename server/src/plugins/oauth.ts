@@ -40,7 +40,7 @@ const CONNECT_LABEL = "mcp-oauth-connect";
  * overnight is not still redeemable. The state carries no permission by itself, but it does say who
  * the resulting grant gets attached to, which is worth keeping fresh.
  */
-const STATE_TTL_MS = 10 * 60_000;
+const STATE_TTL_MS = 30 * 60_000;
 
 /** The one path a vendor is ever told to send somebody back to. */
 const CALLBACK_PATH = "/api/plugins/oauth/callback";

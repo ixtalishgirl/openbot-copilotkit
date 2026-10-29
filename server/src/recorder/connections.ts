@@ -33,9 +33,9 @@ import {
 } from "../db/schema/recorder";
 
 /** A live connection's last use is written at most this often. */
-const LAST_USED_INTERVAL_MS = 60_000;
+const LAST_USED_INTERVAL_MS = 15_000;
 /** Unexpired connect codes one person may hold at once. A person mints one per click, so more than this is a script. */
-const LIVE_CODES_PER_PERSON = 10;
+const LIVE_CODES_PER_PERSON = 50;
 
 export type RecorderConnectionStore = ReturnType<
   typeof createRecorderConnectionStore

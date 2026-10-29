@@ -42,10 +42,10 @@ const SWEEP_LOCK = 4_192_004;
  * table every action writes to. A deployment that has never swept has years to remove and should not
  * take its own audit trail offline doing it.
  */
-const BATCH = 5_000;
+const BATCH = 20_000;
 
 /** How many batches one sweep runs before leaving the rest for the next one. */
-const MAX_BATCHES = 200;
+const MAX_BATCHES = 500;
 
 export type RetentionResult = {
   /** Null when another server was already sweeping. Distinguished from having deleted nothing. */
@@ -131,8 +131,8 @@ export function startRetentionSweeps(
   const sweepsAudit = Boolean(retentionDays && retentionDays >= 1);
   if (!sweepsAudit && !pageFrames) return { stop: () => undefined };
 
-  const intervalMs = options.intervalMs ?? 60 * 60_000;
-  const firstRunMs = options.firstRunMs ?? 60_000;
+  const intervalMs = options.intervalMs ?? 15 * 60_000;
+  const firstRunMs = options.firstRunMs ?? 10_000;
   const timers: ReturnType<typeof setInterval>[] = [];
 
   const run = () => {

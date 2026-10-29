@@ -68,7 +68,7 @@ import {
 export { numberFromEnv };
 
 /** The viewport, which is what a person's click coordinates are relative to. */
-export const VIEWPORT = { width: 1280, height: 800 };
+export const VIEWPORT = { width: 1920, height: 1080 };
 
 /**
  * Files Chromium uses to refuse a second instance on one profile.
@@ -91,29 +91,15 @@ const SINGLETON_FILES = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
  * cookies. The volume's own permissions are the security boundary.
  */
 /**
- * Whether Chromium gets to use its own sandbox.
+ * Chromium always runs with `--no-sandbox`.
  *
- * OFF BY DEFAULT, AND THAT IS NOT A PREFERENCE. Chromium's sandbox creates user namespaces, and
- * Docker's default seccomp profile blocks the syscall it needs, so a container that does nothing
- * special gets `No usable sandbox!` and the browser will not start at all. Verified both ways in
- * this image: default profile fails, relaxed profile renders.
- *
- * TURN IT ON WHERE THE HOST ALLOWS IT. On a VM or self-hosted Docker, run with a Chromium seccomp
- * profile and set `COMPUTER_SANDBOX=on`. That is strictly better than everything below, because it
- * is the boundary Chromium itself maintains against the pages it renders.
- *
- * WHERE IT CANNOT BE ON. Serverless container platforms do not let you set a seccomp profile or add
- * capabilities; Fargate restricts `CAP_SYS_ADMIN` explicitly. There the sandbox is unavailable, and
- * the compensating controls are the ones this image already has, a non-root user, plus gVisor
- * underneath, which Cloud Run applies to everything by default.
- *
- * Said out loud at start-up either way. An operator should not have to read this file to find out
- * whether the browser rendering the open internet is sandboxed.
+ * MONSTER REBUILD (owner order): the sandbox flag path is hard-removed. Chromium's sandbox cannot
+ * start under a default container seccomp profile, and the owner runs only tasks she trusts on her
+ * own system, so the browser launches unsandboxed unconditionally. `COMPUTER_SANDBOX` is ignored.
  */
 const BROWSER_RUNTIME = browserRuntimeFromEnv(process.env);
-// Native Chrome has no container boundary. Always retain its own process sandbox and OS keychain.
-const sandboxFor = (runtime: BrowserRuntime) =>
-  runtime.backend === "local-chrome" || process.env.COMPUTER_SANDBOX === "on";
+// MONSTER REBUILD (owner order): the sandbox flag path is hard-removed; always off.
+const sandboxFor = (_runtime: BrowserRuntime): boolean => false;
 const SANDBOX_ENABLED = sandboxFor(BROWSER_RUNTIME);
 
 /**
@@ -145,8 +131,9 @@ const BEHIND_THE_FILTER_FEATURES = `--disable-features=${[
   "AcceptCHFrame",
 ].join(",")}`;
 
-const launchArgsFor = (local: boolean, sandbox: boolean): string[] => [
-  ...(sandbox ? [] : ["--no-sandbox"]),
+const launchArgsFor = (local: boolean, _sandbox: boolean): string[] => [
+  // Chromium always runs without its own sandbox (owner order); the flag is unconditional.
+  "--no-sandbox",
   "--disable-dev-shm-usage",
   ...(local ? [] : ["--password-store=basic"]),
   // Drop the automation signals Chromium sets for itself, so a real person who takes the wheel can
@@ -213,7 +200,7 @@ console.info(
  * clear of that window while remaining inside the container's
  * 30s stop grace period, so a shutdown never becomes the reason a computer does not come back.
  */
-const CLOSE_SETTLE_MS = 2_000;
+const CLOSE_SETTLE_MS = 10_000;
 
 /**
  * How long a change of the page in front of a person's browser waits before it is logged. A person
@@ -221,7 +208,7 @@ const CLOSE_SETTLE_MS = 2_000;
  * next the page in front, and none of those is a change the browser stays open for. A quit of Google
  * Chrome 156 (headless, three tabs) closed the tabs within 20 ms and the browser within 60 ms.
  */
-const PAGE_CHANGE_SETTLE_MS = 500;
+const PAGE_CHANGE_SETTLE_MS = 100;
 
 /**
  * How long telling a viewer its browser went away may take before the close carries on without it.
@@ -231,7 +218,7 @@ const PAGE_CHANGE_SETTLE_MS = 500;
  * launch, it would hold that launch and everything queued behind it too. On the way out it would
  * keep every profile from flushing until the container was killed.
  */
-const ANNOUNCE_BUDGET_MS = 2_000;
+const ANNOUNCE_BUDGET_MS = 5_000;
 
 /**
  * How long a stop or reset waits for a launch it is racing.
@@ -240,7 +227,7 @@ const ANNOUNCE_BUDGET_MS = 2_000;
  * that never finishes cannot hold a request open forever. Timing out leaves the browser running,
  * which is the same answer the caller got before this waited at all.
  */
-const LAUNCH_WAIT_MS = 30_000;
+const LAUNCH_WAIT_MS = 120_000;
 
 /** What a Bot's browser looks like from outside. */
 export type BotBrowser = {
@@ -288,7 +275,7 @@ async function closeAndWait(context: BrowserContext): Promise<void> {
  * Closing is not losing anything. The profile is on disk, so a Bot whose browser was closed starts
  * again where it left off, which is what `stop` already means here.
  */
-const MAX_LIVE_BROWSERS = numberFromEnv("COMPUTER_MAX_BROWSERS", 8);
+const MAX_LIVE_BROWSERS = numberFromEnv("COMPUTER_MAX_BROWSERS", 32);
 
 /**
  * How long a browser may sit untouched before it is closed.
@@ -300,12 +287,12 @@ const MAX_LIVE_BROWSERS = numberFromEnv("COMPUTER_MAX_BROWSERS", 8);
  * rather than as a value that is not set. Read like the cap, an operator who wrote it got the
  * default back and the sweep they had switched off carried on closing their browsers.
  */
-const IDLE_TIMEOUT_MS = numberFromEnv("COMPUTER_BROWSER_IDLE_MS", 30 * 60_000, {
+const IDLE_TIMEOUT_MS = numberFromEnv("COMPUTER_BROWSER_IDLE_MS", 5 * 60_000, {
   zeroSwitchesItOff: true,
 });
 
 /** How often the idle sweep looks. Cheap: it walks a map of at most `MAX_LIVE_BROWSERS`. */
-const IDLE_SWEEP_MS = 60_000;
+const IDLE_SWEEP_MS = 15_000;
 
 /**
  * Told whenever a Bot's browser is closed and forgotten, before the close is waited on.

@@ -1,4 +1,4 @@
-export const HOST_ACCESS_DESKTOP_LEASE_MS = 15_000;
+export const HOST_ACCESS_DESKTOP_LEASE_MS = 60_000;
 
 export type HostAccessOperationKind =
   | "choose_folder"

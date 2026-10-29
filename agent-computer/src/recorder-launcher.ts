@@ -42,12 +42,12 @@ export class RecorderUnavailableError extends Error {
 }
 
 /** How long a worker that is starting gets to appear and define its launcher. */
-const WORKER_START_MS = 10_000;
+const WORKER_START_MS = 30_000;
 /** How long one launcher call may take. Starting a recording attaches the debugger to a tab. */
-const CALL_MS = 15_000;
+const CALL_MS = 30_000;
 /** How long the question "is the launcher there" may take before the session is replaced. */
-const READY_MS = 2_000;
-const POLL_MS = 100;
+const READY_MS = 5_000;
+const POLL_MS = 50;
 
 type Pending = {
   resolve: (value: unknown) => void;
@@ -164,7 +164,7 @@ export function createRecorderLauncher(input: {
         );
       // Right after a load the worker is starting on its own; asked again each second after that,
       // because a wake can land before the extension's registration is ready to start.
-      if (Date.now() - lastWake >= 1_000) {
+      if (Date.now() - lastWake >= 250) {
         lastWake = Date.now();
         await wake().catch(() => undefined);
       }
@@ -403,7 +403,7 @@ export function createRecorderLauncher(input: {
       }
     },
     async state() {
-      const value = await call("state", undefined, 5_000);
+      const value = await call("state", undefined, 15_000);
       if (!value || typeof value !== "object" || !("phase" in value))
         throw new RecorderUnavailableError(
           "The Recorder answered with something other than its state.",

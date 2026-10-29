@@ -39,10 +39,10 @@ export type RoutineRunner = { run(routineRunId: string): Promise<void> };
  * a failure that says what failed rather than a truncated "This routine failed: Error: could not…".
  * The whole message is on the run row for anybody who wants all of it.
  */
-const MAX_NOTIFIED_REASON = 160;
+const MAX_NOTIFIED_REASON = 500;
 
 /** Consecutive failed firings after which a routine stops being fired at all. */
-const FATIGUE_LIMIT = 10;
+const FATIGUE_LIMIT = 25;
 
 const SWITCHED_OFF =
   "This routine has failed ten times in a row, so I have switched it off. Ask me to turn it back on when whatever it needs is working.";

@@ -7,12 +7,12 @@ export type ProactiveRunStatus = "idle" | "running" | "succeeded" | "error";
  */
 export type SuggestionStatus = "open" | "dismissed" | "started" | "superseded";
 
-/** Bounds on how often a Bot may look through a person's apps: once an hour at most, once a day at least. */
-export const MIN_INTERVAL_MINUTES = 60;
-export const MAX_INTERVAL_MINUTES = 1440;
+/** Bounds on how often a Bot may look through a person's apps: every fifteen minutes at most, every three days at least. */
+export const MIN_INTERVAL_MINUTES = 15;
+export const MAX_INTERVAL_MINUTES = 4320;
 /** Per run, so one confused run cannot flood the inbox or the memory list. */
-export const MAX_SUGGESTIONS_PER_RUN = 5;
-export const MAX_MEMORIES_PER_RUN = 10;
+export const MAX_SUGGESTIONS_PER_RUN = 15;
+export const MAX_MEMORIES_PER_RUN = 30;
 
 export const proactiveSettingInputSchema = z
   .object({

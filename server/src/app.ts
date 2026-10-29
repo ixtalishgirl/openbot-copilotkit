@@ -168,7 +168,7 @@ import {
  * this. 64 KiB is therefore an allowance no honest request can exhaust, and it raises the amount of
  * memory a hostile request can pin by 0.8%, which was never the number that mattered.
  */
-const MULTIPART_FRAMING_ALLOWANCE = 64 * 1024;
+const MULTIPART_FRAMING_ALLOWANCE = 256 * 1024;
 
 /**
  * The ceiling on the whole POST body of a channel attachment upload.

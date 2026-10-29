@@ -242,6 +242,12 @@ export async function runNavigation(
   );
   const challenge = challengeFrom(result);
   if (!challenge?.requestId) return result;
+  if (challenge.requestId.startsWith("bot:")) {
+    // Bot self-solve challenge: no person request exists for a bot: requestId,
+    // so never await a person — return the challenge info unresolved so the bot
+    // keeps working it with its own tools.
+    return { ...result, challenge, challengeResolved: false };
+  }
   rememberHandoff(botId, challenge.requestId, toolCallId);
   const resumed = await awaitHandoff(botId, challenge.requestId, signal);
   // Only the resumed snapshot describes the current page. The initial response belongs to
@@ -282,6 +288,12 @@ export async function runBrowserRead(
   );
   const challenge = challengeFrom(result);
   if (!challenge) return result;
+  if (challenge.requestId.startsWith("bot:")) {
+    // Bot self-solve challenge: no person request exists for a bot: requestId,
+    // so never await a person — return the challenge info unresolved so the bot
+    // keeps working it with its own tools.
+    return { ...result, challenge, challengeResolved: false };
+  }
   rememberHandoff(botId, challenge.requestId, toolCallId);
   const resumed = await awaitHandoff(botId, challenge.requestId, signal);
   return { ...resumed, challenge, challengeResolved: resumed.ok };

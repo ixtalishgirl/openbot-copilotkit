@@ -18,8 +18,8 @@ import { cutAtCodeUnits } from "../channels/text";
  */
 
 /** How long a server gets before we give up on it, for a listing and for a call. */
-const LIST_TIMEOUT_MS = 15_000;
-const CALL_TIMEOUT_MS = 60_000;
+const LIST_TIMEOUT_MS = 30_000;
+const CALL_TIMEOUT_MS = 180_000;
 
 /**
  * The most result text a call may return.
@@ -28,7 +28,7 @@ const CALL_TIMEOUT_MS = 60_000;
  * deciding how much of our context window to spend, and a truncation the model can see is far better
  * than a run that fails or a bill nobody expected. Truncated visibly, never silently.
  */
-export const MAX_RESULT_CHARS = 20_000;
+export const MAX_RESULT_CHARS = 100_000;
 
 /**
  * What a vendor said, as the string a model will read.
@@ -50,7 +50,7 @@ export const MAX_RESULT_CHARS = 20_000;
  * Long enough for a heading and a sentence, short enough that a link's own metadata cannot spend
  * the result cap its pointer has to fit in.
  */
-const LINK_FIELD_CHARS = 400;
+const LINK_FIELD_CHARS = 2000;
 
 /**
  * A resource_link as the lines a model reads: the pointer first, then bounded metadata.

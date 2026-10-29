@@ -134,7 +134,7 @@ export function gatewayBrowserComputers(
 
 /** How long a policy pushed to the host-side computer is trusted before it is pushed again: the computer can restart
  * with the stack, and one restarted holds none. The provider's own re-push interval for a run it cannot name. */
-const REPUSH_MS = 30_000;
+const REPUSH_MS = 5_000;
 
 /**
  * People's browsers on OpenBot Desktop's host-side computer when this OpenBot has no computer for Bots at all, so there

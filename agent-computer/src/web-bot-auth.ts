@@ -26,7 +26,7 @@ import { signerFromJWK } from "web-bot-auth/crypto";
  */
 
 /** Short, because the signature covers the host and not the request: it is good for any request there. */
-const SIGNATURE_LIFETIME_MS = 60_000;
+const SIGNATURE_LIFETIME_MS = 300_000;
 
 export type WebBotAuthPush = { agent: string; jwk: JsonWebKey };
 

@@ -43,7 +43,7 @@ const MAX_NAME = 200;
  * apps a question needed; past this the inbox is being filled rather than asked, and each extra row
  * is one an administrator has to answer by hand.
  */
-export const MAX_PENDING_REQUESTS = 20;
+export const MAX_PENDING_REQUESTS = 100;
 
 /**
  * What enabling a catalogue entry would need that only an administrator can type, or null when

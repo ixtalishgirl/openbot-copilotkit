@@ -47,7 +47,7 @@ export const demonstrationsQueryOptions = (botId: string) =>
         "demonstrations",
         { fallback: "Could not load demonstrations" },
       ),
-    refetchInterval: 2000,
+    refetchInterval: 1000,
   });
 export const startDemonstration = (
   botId: string,

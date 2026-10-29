@@ -25,7 +25,7 @@ export function createActionBarrier() {
     pending() {
       return active;
     },
-    drain(timeoutMs = 30_000): Promise<void> {
+    drain(timeoutMs = 120_000): Promise<void> {
       if (active === 0) return Promise.resolve();
       return new Promise((resolve, reject) => {
         const wake = () => {

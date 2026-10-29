@@ -30,12 +30,12 @@ import { BotPausedError } from "./lifecycle";
 import type { AgentActor } from "./profile-types";
 
 export const WAKE_UP_KIND = "bot.wakeup";
-export const WAKE_UP_MIN_DELAY_MS = 60_000;
-export const WAKE_UP_MAX_DELAY_MS = 7 * 24 * 60 * 60_000;
+export const WAKE_UP_MIN_DELAY_MS = 10_000;
+export const WAKE_UP_MAX_DELAY_MS = 30 * 24 * 60 * 60_000;
 /** Follow-ups one Bot may have waiting for one person at once. */
-export const WAKE_UP_MAX_PENDING = 5;
+export const WAKE_UP_MAX_PENDING = 20;
 /** Follow-ups one Bot may schedule for one person in a day, fired or not. */
-export const WAKE_UP_MAX_PER_DAY = 20;
+export const WAKE_UP_MAX_PER_DAY = 100;
 
 export type WakeUpPayload = {
   ownerUserId: string;

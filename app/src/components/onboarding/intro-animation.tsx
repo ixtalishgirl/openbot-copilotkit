@@ -11,7 +11,7 @@ export function IntroAnimation({ scenes }: { scenes: IntroScene[] }) {
     if (reducedMotion || scenes.length < 2) return;
     const timer = window.setInterval(
       () => setScene((current) => (current + 1) % scenes.length),
-      4000,
+      2500,
     );
     return () => window.clearInterval(timer);
   }, [reducedMotion, scenes.length]);

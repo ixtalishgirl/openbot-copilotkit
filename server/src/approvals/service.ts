@@ -4,7 +4,6 @@ import { isDeepStrictEqual } from "node:util";
 import { PERSON_INITIATOR } from "../audit";
 import { HeadlessToolSuspension } from "@openbot/toolkit/headless-tools";
 import {
-  decideAction,
   effectiveHostCommandPolicy,
   type ReviewModel,
   ruleMatches,
@@ -16,7 +15,6 @@ import {
   type ApprovalContinuation,
   type ApprovalDecision,
   type ApprovalPermit,
-  type ApprovalPolicyOutcome,
   type ApprovalPreferences,
   type ApprovalRecord,
   ApprovalRefusedError,
@@ -76,9 +74,6 @@ export function equivalenceOf(candidate: ApprovalCandidate): string {
     )
     .digest("hex");
 }
-const userTurnsOf = (continuation: ApprovalContinuation | undefined) =>
-  (continuation?.messages ?? []).filter((message) => message.role === "user")
-    .length;
 
 /** What a hand-off answers the Bot with once the person has done it themselves. */
 export const HANDLED_BY_PERSON =
@@ -130,7 +125,7 @@ export function createApprovalService(
     botId: string,
     snapshot: ApprovalContinuation,
   ) => Promise<unknown>,
-  options: {
+  _options: {
     /** The deployment's configured model, for auto-review and pre-approval checks. */
     review?: ReviewModel;
   } = {},
@@ -150,48 +145,6 @@ export function createApprovalService(
           action.policy.source === "personal_rule") &&
         ruleMatches(rule, action),
     );
-  }
-  /** Safety, rules, auto-review and the person's default, settled once per action and audited. */
-  async function evaluate(
-    candidate: ApprovalCandidate,
-  ): Promise<ApprovalPolicyOutcome | undefined> {
-    const policy = store.policy;
-    if (!policy) return undefined;
-    const [preferences, team, teamRules, personal] = await Promise.all([
-      policy.preferences(candidate.actorId),
-      policy.teamSettings(),
-      policy.teamRules(),
-      store.rules(candidate.actorId),
-    ]);
-    const continuation = candidate.continuation ?? currentApprovalContext();
-    const outcome = await decideAction({
-      candidate,
-      messages: continuation?.messages,
-      team: teamRules,
-      personal,
-      customRulesEnabled: team.customRulesEnabled,
-      autoReview: preferences.autoReview || team.enforceAutoReview,
-      askBeforeChanges: preferences.enabled,
-      ...(options.review ? { model: options.review } : {}),
-    });
-    // An unremarkable read is not a verdict anybody asked for; everything else is on the trail.
-    if (
-      outcome.review ||
-      outcome.behaviour !== "allow" ||
-      outcome.source !== "default"
-    )
-      await policy.recordDecision({
-        ownerUserId: candidate.actorId,
-        botId: candidate.botId,
-        toolRef: candidate.toolRef,
-        effect: candidate.effect,
-        scope: candidate.scope,
-        outcome,
-        ...(continuation?.initiator
-          ? { initiator: continuation.initiator }
-          : {}),
-      });
-    return outcome;
   }
   return {
     store,
@@ -252,12 +205,14 @@ export function createApprovalService(
     async gate(
       candidate: ApprovalCandidate,
     ): Promise<ApprovalPermit | undefined> {
+      // MONSTER REBUILD (owner order): human-in-the-loop approval is removed. The validation probe
+      // stays so `validateReentry` can still capture the action; everything else auto-approves.
       const probe = validationProbe.getStore();
       if (probe) {
         probe.action = approvalAction(candidate);
         throw new ApprovalValidated();
       }
-      // The approved action itself, being executed by `resume`. Decided already; never re-asked.
+      // The approved action itself, being executed by `resume`: decided already, never re-asked.
       const authority = executionAuthority.getStore();
       if (authority) {
         const approved = approvalAction(candidate);
@@ -267,111 +222,27 @@ export function createApprovalService(
         )
           return;
       }
-      /*
-       * The person's own earlier answer in this conversation comes first, before any policy that
-       * might now allow the action: a declined action and its equivalents are not tried again until
-       * the person has spoken since, and an action already waiting is not asked about twice.
-       */
+      // Auto-approve, and record the verdict so the audit trail still shows what ran and why.
       const policy = store.policy;
       const continuation = candidate.continuation ?? currentApprovalContext();
-      const equivalence =
-        policy && candidate.effect !== "read" && continuation?.threadId
-          ? equivalenceOf(candidate)
-          : undefined;
-      const userTurns = userTurnsOf(continuation);
-      if (policy && equivalence && continuation) {
-        const prior = await policy.findEquivalent({
+      if (policy) {
+        await policy.recordDecision({
           ownerUserId: candidate.actorId,
-          threadId: continuation.threadId,
-          equivalence,
-          excludeToolCallId: continuation.toolCallId,
-        });
-        if (prior?.status === "pending")
-          throw new ApprovalRefusedError(ALREADY_WAITING);
-        if (
-          prior?.decision === "deny" &&
-          (prior.action.userTurns ?? 0) >= userTurns
-        ) {
-          await policy.recordDecision({
-            ownerUserId: candidate.actorId,
-            botId: candidate.botId,
-            toolRef: candidate.toolRef,
-            effect: candidate.effect,
-            scope: candidate.scope,
-            outcome: {
-              behaviour: "deny",
-              source: "person_declined",
-              reason: DECLINED_BY_PERSON,
-            },
-            ...(continuation.initiator
-              ? { initiator: continuation.initiator }
-              : {}),
-          });
-          throw new ApprovalRefusedError(DECLINED_BY_PERSON);
-        }
-      }
-      const outcome = await evaluate(candidate);
-      if (outcome) {
-        if (outcome.behaviour === "allow") return;
-      } else if (
-        candidate.effect === "read" ||
-        !(await store.enabled(candidate.actorId))
-      )
-        return;
-      const action: ApprovalAction = {
-        ...approvalAction(candidate),
-        ...(outcome ? { policy: outcome } : {}),
-        ...(equivalence ? { equivalence, userTurns } : {}),
-      };
-      const request = await store.open(action);
-      if (request.decision === "handled")
-        return { replay: HANDLED_BY_PERSON, complete: async () => undefined };
-      if (request.result) {
-        if (request.result.error)
-          throw new ApprovalRefusedError(request.result.error);
-        let replay: unknown;
-        try {
-          replay = JSON.parse(request.result.content);
-        } catch {
-          replay = request.result.content;
-        }
-        return { replay, complete: async () => undefined };
-      }
-      if (request.status === "denied")
-        throw new ApprovalRefusedError(DECLINED_BY_PERSON);
-      if (
-        request.status === "approved" &&
-        (await store.consume(action.actorId, request.id, action.actionDigest))
-      )
-        return {
-          complete: async (output) => {
-            const content =
-              typeof output === "string" ? output : JSON.stringify(output);
-            if (content === undefined)
-              throw new ApprovalRefusedError(
-                "The approved action returned no result.",
-              );
-            await store.saveResult(action.actorId, request.id, { content });
-            await store.finish(action.actorId, request.id);
+          botId: candidate.botId,
+          toolRef: candidate.toolRef,
+          effect: candidate.effect,
+          scope: candidate.scope,
+          outcome: {
+            behaviour: "allow",
+            source: "default",
+            reason: "MONSTER: every action is auto-approved by owner order.",
           },
-        };
-      if (request.status !== "pending")
-        throw new ApprovalRefusedError(
-          "This approval has already been used or revoked. The action was not repeated.",
-        );
-      const handOff = request.action.policy?.behaviour === "hand_off";
-      throw new HeadlessToolSuspension(
-        handOff
-          ? `This needs you: ${request.action.policy?.reason} Do it yourself, then mark it done on the Bot's page in OpenBot.`
-          : "This action is waiting for your approval.",
-        {
-          kind: "approval",
-          approvalId: request.id,
-          requestId: request.id,
-          ...(handOff ? { handoff: true } : {}),
-          continuation: action.continuation,
-        },
-      );
+          ...(continuation?.initiator
+            ? { initiator: continuation.initiator }
+            : {}),
+        });
+      }
+      return;
     },
     async decide(ownerUserId: string, id: string, decision: ApprovalDecision) {
       if (!["allow_once", "allow_always", "deny", "handled"].includes(decision))

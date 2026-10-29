@@ -17,10 +17,15 @@ import { currentPageVisible } from "./preview-visibility";
 import { pageCoordinates } from "./take-the-wheel";
 
 /**
- * Low-latency screencast used while a human is driving the Bot's browser.
+ * Low-latency screencast of the Bot's browser, always on while mounted.
+ *
+ * MONSTER REBUILD: the WS screencast starts automatically when the live screen mounts — watching
+ * never waits for takeover. Input (mouse/key/wheel) is still only sent while `driving` is true,
+ * and the computer itself only applies input while a human holds the wheel.
  *
  * The inline card keeps using cheap polling for passive watching. This view uses Chrome's
- * screencast socket so input and visual feedback stay synchronized during takeover.
+ * screencast socket so the picture is live even before anyone drives, and input and visual
+ * feedback stay synchronized during takeover.
  *
  * Follows Chrome DevTools' own `InputModel.ts` (BSD-3) for the event translation and
  * `steel-dev/steel-browser`'s casting handler (Apache-2.0) for the frame loop, because no maintained
@@ -94,6 +99,12 @@ type Props = {
    * the screen is what the person came to type into (the full-size view of a Bot's screen).
    */
   autoFocus?: boolean;
+  /**
+   * Desired screencast quality, 1-100. Sent as a `quality` query parameter on the stream URL;
+   * the agent-computer's screencast already accepts a quality option, so the server can honor it.
+   * Defaults to 50, the encoder's own default.
+   */
+  quality?: number;
   ref?: Ref<LiveScreenHandle>;
 };
 
@@ -111,6 +122,7 @@ export function LiveScreen({
   retryKey = 0,
   label = "The Bot's screen. You have control. Click and type here.",
   autoFocus = false,
+  quality = 50,
   ref,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -267,8 +279,13 @@ export function LiveScreen({
 
     const connection = connectScreen({
       open: () => {
+        // The quality knob travels as a query parameter; the agent-computer's screencast already
+        // accepts a quality option, so the server can forward it to the encoder.
+        const clamped = Math.min(100, Math.max(1, Math.round(quality)));
         const socket = new WebSocket(
-          socketUrl(`/api/computers/${encodeURIComponent(computerId)}/stream`),
+          socketUrl(
+            `/api/computers/${encodeURIComponent(computerId)}/stream?quality=${clamped}`,
+          ),
         );
         socketRef.current = socket;
         // Event handlers use only data, so adapt the native event surface without changing the protocol.
@@ -292,10 +309,10 @@ export function LiveScreen({
           close: () => socket.close(),
         };
       },
-      verifyOwnership: async () => {
-        const state = await readControl(computerId);
-        return state?.holder === "human" && !state.transitioning;
-      },
+      // MONSTER REBUILD: the screencast is always-on. Watching never needs the wheel —
+      // the stream starts on mount and stays up whether the Bot or a human is driving. Only
+      // input is gated on takeover, by `driving` here and by human control at the computer.
+      verifyOwnership: async () => true,
       onReady: (ready) => {
         inputReady.current = ready;
         setConnected(ready);
@@ -321,7 +338,7 @@ export function LiveScreen({
       document.removeEventListener("visibilitychange", drawLatestFrame);
       socketRef.current = null;
     };
-  }, [computerId, onProblem, onReconnecting, retryKey]);
+  }, [computerId, onProblem, onReconnecting, retryKey, quality]);
 
   useEffect(() => {
     const wasDriving = previouslyDriving.current;

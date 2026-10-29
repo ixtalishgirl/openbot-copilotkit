@@ -45,11 +45,11 @@ export type NativeLaunch = {
 };
 
 /** How long the browser may take to start and show its first window: as long as Playwright's own launch waits. */
-const LAUNCH_MS = 180_000;
+const LAUNCH_MS = 300_000;
 /** How long a close may take before the browser is killed: a browser that will not quit must not hold a close open. */
-const CLOSE_MS = 20_000;
+const CLOSE_MS = 60_000;
 /** How many of the browser's last lines of output a failed launch reports. */
-const LOG_LINES = 20;
+const LOG_LINES = 200;
 /**
  * The id this module's own `Browser.close` goes out with. Playwright numbers its commands up from 1 and
  * takes an answer to an id it did not send as an error, so the answer to this one is not passed on.

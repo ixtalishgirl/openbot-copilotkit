@@ -52,15 +52,15 @@ type RunningTurn = { controller: AbortController; startedAt: number };
  * dropped by age: twice the longest a headless turn may run. Aborting one that already finished is
  * harmless, so erring long costs nothing but a map entry.
  */
-const TURN_RETENTION_MS = 10 * 60_000;
+const TURN_RETENTION_MS = 30 * 60_000;
 /** How often running turns are checked against pauses made on other replicas. */
-const CROSS_REPLICA_CHECK_MS = 5_000;
+const CROSS_REPLICA_CHECK_MS = 1_000;
 /**
  * How many checks in a row may fail before the watcher stops a pair's turns. A turn never STARTS
  * on an unreadable pause, but one slow query must not stop every turn on the replica, for every
  * person and Bot. Three checks is fifteen seconds of a database that stays unreadable.
  */
-const UNREADABLE_CHECKS_BEFORE_STOP = 3;
+const UNREADABLE_CHECKS_BEFORE_STOP = 10;
 
 const state: {
   database?: Database;

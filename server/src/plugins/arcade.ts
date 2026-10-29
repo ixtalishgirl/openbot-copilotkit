@@ -120,9 +120,9 @@ export function useArcadeClient(client: ArcadeActions | null): void {
 
 export type ArcadeListedTool = ListedTool & { scopes: string[] };
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 500;
 /** A runaway guard, not a bound: 1000 pages of 100 is far past any one toolkit. */
-const MAX_PAGES = 1000;
+const MAX_PAGES = 2000;
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)

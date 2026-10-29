@@ -91,10 +91,10 @@ export type WorkspaceEntry = {
 };
 
 export const DEFAULT_WORKSPACE_LIMITS: WorkspaceLimits = {
-  readBytes: 64_000,
-  writeBytes: 1_000_000,
-  listEntries: 500,
-  downloadBytes: 100 * 1024 * 1024,
+  readBytes: 1_000_000,
+  writeBytes: 10_000_000,
+  listEntries: 5000,
+  downloadBytes: 1024 * 1024 * 1024,
 };
 
 export function createWorkspace(

@@ -21,7 +21,7 @@ export function LaptopIllustration() {
         className="mx-auto h-32 w-[90%] rounded-t-lg bg-neutral-100 p-1 shadow-sm ring-1 shadow-black/10 ring-black/10 dark:bg-neutral-800 dark:shadow-white/5 dark:ring-white/10"
         initial={reduceMotion ? false : { rotateX: -60 }}
         style={{ transformOrigin: "center bottom" }}
-        transition={{ delay: 0.35, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ delay: 0.175, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="relative h-full w-full overflow-hidden rounded-t rounded-b-sm bg-white dark:bg-neutral-900">
           <div className="absolute inset-x-0 top-1 mx-auto h-2 w-7 rounded-full bg-black" />
@@ -29,7 +29,7 @@ export function LaptopIllustration() {
             animate={{ opacity: 1, filter: "blur(0px)" }}
             className="flex h-full flex-col items-center justify-center gap-2 pt-2"
             initial={reduceMotion ? false : { opacity: 0, filter: "blur(8px)" }}
-            transition={{ delay: 1, duration: 0.6 }}
+            transition={{ delay: 0.5, duration: 0.3 }}
           >
             <AgentOrb size="44px" />
             <span className="text-xs font-semibold tracking-tight">

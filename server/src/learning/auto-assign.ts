@@ -188,9 +188,9 @@ export type LearningAutoAssign = {
 };
 
 /** How often a deployment with no container asks again, so one created later is picked up. */
-const RETRY_MS = 10 * 60_000;
+const RETRY_MS = 5 * 60_000;
 /** The shortest gap between background checks started by page loads and turns. */
-const MIN_INTERVAL_MS = 60_000;
+const MIN_INTERVAL_MS = 30_000;
 
 /**
  * Assign this project's `openbot` Learning container as the default when nobody has chosen one.

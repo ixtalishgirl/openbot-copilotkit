@@ -36,9 +36,9 @@ import { proactiveSettings } from "../db/schema/proactive";
 import type { MemoryIngestion } from "./ingestion";
 
 /** How often background research runs when OpenBot switched it on, in minutes. */
-export const DEFAULT_RESEARCH_INTERVAL_MINUTES = 240;
+export const DEFAULT_RESEARCH_INTERVAL_MINUTES = 60;
 /** The shortest gap between two adoption passes for one person and Bot in this process. */
-const MIN_INTERVAL_MS = 5 * 60_000;
+const MIN_INTERVAL_MS = 60_000;
 
 /** A transaction or the database: anything that can run the statements below. */
 type Executor = Pick<Database, "execute" | "select" | "insert" | "delete">;

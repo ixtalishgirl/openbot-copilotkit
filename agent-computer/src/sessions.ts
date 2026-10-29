@@ -77,7 +77,7 @@ export type SessionsOptions = {
  */
 export function createSessions(options: SessionsOptions) {
   const sessions = new Map<string, BotSession>();
-  const cap = options.cap ?? 32;
+  const cap = options.cap ?? 256;
   const mintRun = options.mintRun ?? (() => crypto.randomUUID());
 
   /**

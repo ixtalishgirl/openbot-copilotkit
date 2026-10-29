@@ -49,7 +49,7 @@ export type RecorderExtensionDeps = Omit<
 };
 
 /** How long the Recorder's popup waits for the person's Learning space: the capture pass's own budget. */
-const LEARNING_SPACE_WAIT_MS = 4_000;
+const LEARNING_SPACE_WAIT_MS = 2_000;
 
 /** The value of one cookie in a Cookie header, or undefined. */
 function cookieValue(header: string, name: string): string | undefined {

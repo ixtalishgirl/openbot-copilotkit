@@ -13,7 +13,7 @@
  */
 
 /** Long enough for a uuid-shaped agent id, short enough to stay inside Docker's own name limits. */
-const MAX_BOT_ID = 64;
+const MAX_BOT_ID = 128;
 
 const ALLOWED = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
